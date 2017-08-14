@@ -2,9 +2,10 @@ package model
 
 import (
 	"encoding/binary"
+	"io"
+
 	"github.com/btcboost/copernicus/utils"
 	"github.com/pkg/errors"
-	"io"
 )
 
 const (
@@ -200,7 +201,7 @@ func (tx *Tx) Copy() *Tx {
 			Value:  txOut.Value,
 			Script: newOutScript,
 		}
-		tx.Outs = append(tx.Outs, &newTxOut)
+		newTx.Outs = append(newTx.Outs, &newTxOut)
 	}
 	for _, txIn := range tx.Ins {
 		newOutPoint := OutPoint{}
@@ -209,12 +210,12 @@ func (tx *Tx) Copy() *Tx {
 		scriptLen := len(txIn.Script)
 		newScript := make([]byte, scriptLen)
 		copy(newScript, txIn.Script[:scriptLen])
-		newTx := TxIn{
+		newTxIn := TxIn{
 			Sequence:         txIn.Sequence,
 			PreviousOutPoint: &newOutPoint,
 			Script:           newScript,
 		}
-		tx.Ins = append(tx.Ins, &newTx)
+		newTx.Ins = append(newTx.Ins, &newTxIn)
 	}
 	return &newTx
 
