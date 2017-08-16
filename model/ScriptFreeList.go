@@ -1,9 +1,10 @@
 package model
 
 import (
+	"io"
+
 	"github.com/btcboost/copernicus/utils"
 	"github.com/pkg/errors"
-	"io"
 )
 
 type ScriptFreeList chan []byte
@@ -48,7 +49,8 @@ func ReadScript(reader io.Reader, pver uint32, maxAllowed uint32, fieldName stri
 	_, err = io.ReadFull(reader, buf)
 	if err != nil {
 		scriptPool.Return(buf)
+		return
 	}
-	return
+	return buf, nil
 
 }
