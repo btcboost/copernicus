@@ -122,6 +122,8 @@ func (tx *Tx) Deserialize(reader io.Reader) (err error) {
 	txIns := make([]TxIn, count)
 	tx.Ins = make([]*TxIn, count)
 	for i := uint64(0); i < count; i++ {
+		txIns[i].PreviousOutPoint = new(OutPoint)
+		txIns[i].PreviousOutPoint.Hash = new(utils.Hash)
 		txIn := &txIns[i]
 		tx.Ins[i] = txIn
 		err = txIn.Deserialize(reader, tx.Version)
@@ -192,6 +194,8 @@ func (tx *Tx) Copy() *Tx {
 		Ins:      make([]*TxIn, 0, len(tx.Ins)),
 		Outs:     make([]*TxOut, 0, len(tx.Outs)),
 	}
+	newTx.Hash = tx.Hash
+
 	for _, txOut := range tx.Outs {
 		scriptLen := len(txOut.Script)
 		newOutScript := make([]byte, scriptLen)
@@ -204,8 +208,10 @@ func (tx *Tx) Copy() *Tx {
 		newTx.Outs = append(newTx.Outs, &newTxOut)
 	}
 	for _, txIn := range tx.Ins {
-		newOutPoint := OutPoint{}
+		var buf utils.Hash
+		newOutPoint := OutPoint{Hash: &buf}
 		newOutPoint.Hash.SetBytes(txIn.PreviousOutPoint.Hash[:])
+
 		newOutPoint.Index = txIn.PreviousOutPoint.Index
 		scriptLen := len(txIn.Script)
 		newScript := make([]byte, scriptLen)
