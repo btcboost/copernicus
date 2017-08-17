@@ -2,9 +2,10 @@ package model
 
 import (
 	"encoding/binary"
+	"io"
+
 	"github.com/btcboost/copernicus/utils"
 	"github.com/pkg/errors"
-	"io"
 )
 
 const (
@@ -121,6 +122,8 @@ func (tx *Tx) Deserialize(reader io.Reader) (err error) {
 	txIns := make([]TxIn, count)
 	tx.Ins = make([]*TxIn, count)
 	for i := uint64(0); i < count; i++ {
+		txIns[i].PreviousOutPoint = new(OutPoint)
+		txIns[i].PreviousOutPoint.Hash = new(utils.Hash)
 		txIn := &txIns[i]
 		tx.Ins[i] = txIn
 		err = txIn.Deserialize(reader, tx.Version)
@@ -191,6 +194,8 @@ func (tx *Tx) Copy() *Tx {
 		Ins:      make([]*TxIn, 0, len(tx.Ins)),
 		Outs:     make([]*TxOut, 0, len(tx.Outs)),
 	}
+	newTx.Hash = tx.Hash
+
 	for _, txOut := range tx.Outs {
 		scriptLen := len(txOut.Script)
 		newOutScript := make([]byte, scriptLen)
@@ -200,21 +205,23 @@ func (tx *Tx) Copy() *Tx {
 			Value:  txOut.Value,
 			Script: newOutScript,
 		}
-		tx.Outs = append(tx.Outs, &newTxOut)
+		newTx.Outs = append(newTx.Outs, &newTxOut)
 	}
 	for _, txIn := range tx.Ins {
-		newOutPoint := OutPoint{}
+		var buf utils.Hash
+		newOutPoint := OutPoint{Hash: &buf}
 		newOutPoint.Hash.SetBytes(txIn.PreviousOutPoint.Hash[:])
+
 		newOutPoint.Index = txIn.PreviousOutPoint.Index
 		scriptLen := len(txIn.Script)
 		newScript := make([]byte, scriptLen)
 		copy(newScript, txIn.Script[:scriptLen])
-		newTx := TxIn{
+		newTxIn := TxIn{
 			Sequence:         txIn.Sequence,
 			PreviousOutPoint: &newOutPoint,
 			Script:           newScript,
 		}
-		tx.Ins = append(tx.Ins, &newTx)
+		newTx.Ins = append(newTx.Ins, &newTxIn)
 	}
 	return &newTx
 

@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/btcboost/copernicus/utils"
 	"os"
 	"sync"
+
+	"github.com/btcboost/copernicus/utils"
 )
 
 type BlockChain struct {
@@ -99,6 +100,7 @@ func (blockChain *BlockChain) SkipTo(blkID uint32, offset int64) (err error) {
 }
 
 func blkFileName(path string, id uint32) string {
+
 	return fmt.Sprintf("%s/blk%05.dat", path, id)
 }
 
