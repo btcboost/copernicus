@@ -22,7 +22,7 @@ func TestScript(t *testing.T) {
 
 	//3. again borrow the slice from ScriptFreeList will not equal bufOne
 	bufFour := myscriptlist.Borrow(freeListMaxScriptSize)
-	t.Log("again borrow slice lenth : ", len(bufFour), " : content : ", bufFour)
+	t.Log("again borrow slice lenth : ", len(bufFour))
 
 	//4. return The bufThree slice to scriptlist
 	copy(bufThree, "bbbbbbbbbbbbbbbbbbbbb")
@@ -30,6 +30,6 @@ func TestScript(t *testing.T) {
 
 	//5. with get The slice from list
 	bufFour = myscriptlist.Borrow(freeListMaxScriptSize)
-	t.Log("get The slice lenth : ", len(bufFour), " : content : ", bufFour)
+	t.Log("get The slice lenth : ", len(bufFour))
 
 }
