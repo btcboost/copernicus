@@ -12,6 +12,7 @@ func checkErr(err error) {
 		if err != io.EOF {
 			fmt.Println("Errors : ", err)
 			os.Exit(1)
+
 		}
 	}
 }
@@ -22,7 +23,7 @@ func TestSerializeSize(t *testing.T) {
 	copy(outScript, myString)
 
 	//1. create Transaction Out
-	txOut := NewTxOut(999, outScript[:])
+	txOut := NewTxOut(999, outScript[:])s
 	t.Log(txOut.Value, " : ", string(txOut.Script))
 
 	//2. write transaction Out in use fileIO
