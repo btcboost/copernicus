@@ -1,22 +1,11 @@
 package model
 
 import (
+	"github.com/btcboost/copernicus/utils"
 	"io"
 	"os"
 	"testing"
-
-	"github.com/btcboost/copernicus/utils"
 )
-
-/*
-//交易数据结构
-type Tx struct {
-	Hash     utils.Hash //本交易的哈希
-	LockTime uint32     //锁定时间，分为3中数据范围，意义不一样。
-	Version  int32      //版本号
-	Ins      []*TxIn    //交易输入
-	Outs     []*TxOut   //交易输出
-}*/
 
 func TestSerializeSizeTx(t *testing.T) {
 	//1. create Transaction
@@ -42,7 +31,7 @@ func TestSerializeSizeTx(t *testing.T) {
 	myString = "asdqwhihnciwiqd827w7e6123cdsnvh43yt892ufimjf27rufian2yr8sacmejfgu3489utwej"
 	outScript := make([]byte, len(myString))
 	copy(outScript, myString)
-	txOut := NewTxOut(999, outScript[:len(outScript)])
+	txOut := NewTxOut(999, outScript[:])
 
 	//6. add The TxOut in Tx
 	newTx.AddTxOut(txOut)

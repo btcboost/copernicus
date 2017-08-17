@@ -1,12 +1,10 @@
 package model
 
 import (
-	//	"fmt"
+	"github.com/btcboost/copernicus/utils"
 	"io"
 	"os"
 	"testing"
-
-	"github.com/btcboost/copernicus/utils"
 )
 
 func TestNewTxIn(t *testing.T) {
