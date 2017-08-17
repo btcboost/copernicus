@@ -25,7 +25,7 @@ func TestNewOutPoint(t *testing.T) {
 	file, err := os.OpenFile("txOut.txt", os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		t.Log(err)
-		os.Exit(1)
+		return
 	}
 	defer file.Close()
 
@@ -33,7 +33,7 @@ func TestNewOutPoint(t *testing.T) {
 	err = s.WriteOutPoint(file, 10, 1)
 	if err != nil {
 		t.Log(err)
-		os.Exit(1)
+		return
 	}
 
 	//5. seek file IO
@@ -41,14 +41,16 @@ func TestNewOutPoint(t *testing.T) {
 	_, err = file.Seek(0, io.SeekStart)
 	if err != nil {
 		t.Log(err)
-		os.Exit(1)
+		return
 	}
 
 	//6. read news from file IO
 	err = txOutRead.ReadOutPoint(file, 1)
 	if err != nil {
-		t.Log(err)
-		os.Exit(1)
+		if err != io.EOF {
+			t.Log(err)
+			return
+		}
 	}
 
 	t.Log(txOutRead)
