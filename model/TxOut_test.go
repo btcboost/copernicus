@@ -23,7 +23,7 @@ func TestSerializeSize(t *testing.T) {
 	copy(outScript, myString)
 
 	//1. create Transaction Out
-	txOut := NewTxOut(999, outScript[:])s
+	txOut := NewTxOut(999, outScript[:])
 	t.Log(txOut.Value, " : ", string(txOut.Script))
 
 	//2. write transaction Out in use fileIO
