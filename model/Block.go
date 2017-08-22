@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
-	"github.com/btcboost/copernicus/utils"
 	"time"
+
+	"github.com/btcboost/copernicus/utils"
 )
 
 var EmptyByte = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
@@ -30,9 +31,7 @@ type Block struct {
 func ParseBlock(raw []byte) (block *Block, err error) {
 	block = new(Block)
 	block.Raw = raw
-	hash := utils.Hash{}
-	hash.SetBytes(raw[:80])
-	block.Hash = hash
+	block.Hash = utils.DoubleHashH(raw[:80])
 	block.Version = binary.LittleEndian.Uint32(raw[0:4])
 	if !bytes.Equal(raw[4:36], EmptyByte) {
 		block.PrevBlock = utils.ToHash256String(raw[4:36])
