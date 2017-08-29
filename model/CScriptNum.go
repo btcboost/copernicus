@@ -34,6 +34,7 @@ func GetCScriptNum(vch []byte, requireMinimal bool, maxNumSize int) (scriptNum *
 			// (big-endian).
 			if vchLen <= 1 || (vch[vchLen-2]&0x80) == 0 {
 				err = errors.New("non-minimally encoded script number")
+				return
 			}
 		}
 
