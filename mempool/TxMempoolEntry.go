@@ -94,23 +94,24 @@ func (txMempoolEntry *TxMempoolEntry) GetFeeDelta() int64 {
 }
 
 func (txMempoolEntry *TxMempoolEntry) UpdateAncestorState(modifySize, modifyCount, modifySigOps int64, modifyFee btcutil.Amount) {
-	if modifySize < 0 && uint64(-modifySize) > txMempoolEntry.sizeWithAncestors {
-		panic("the Ancestors's object size should not be negative")
-	}
-	if modifyCount < 0 && uint64(-modifyCount) > txMempoolEntry.CountWithAncestors {
-		panic("the Ancestors's number should not be negative")
-	}
-
 	if modifySize < 0 {
 		txMempoolEntry.sizeWithAncestors -= uint64(-modifySize)
 	} else {
 		txMempoolEntry.sizeWithAncestors += uint64(modifySize)
 	}
+	if txMempoolEntry.sizeWithAncestors < 0 {
+		panic("the Ancestors's object size should not be negative")
+	}
+
 	if modifyCount < 0 {
 		txMempoolEntry.CountWithAncestors -= uint64(-modifyCount)
 	} else {
 		txMempoolEntry.CountWithAncestors += uint64(modifyCount)
 	}
+	if txMempoolEntry.CountWithAncestors < 0 {
+		panic("the Ancestors's number should not be negative")
+	}
+
 	txMempoolEntry.ModFeesWithAncestors += modifyFee
 	txMempoolEntry.SigOpCountWithAncestors += modifySigOps
 	if txMempoolEntry.SigOpCountWithAncestors < 0 {
@@ -119,16 +120,13 @@ func (txMempoolEntry *TxMempoolEntry) UpdateAncestorState(modifySize, modifyCoun
 }
 
 func (txMempoolEntry *TxMempoolEntry) UpdateDescendantState(modifySize int64, modifyFee btcutil.Amount, modifyCount int64) {
-	if modifySize < 0 && uint64(-modifySize) > txMempoolEntry.SizeWithDescendants {
-		panic("the Descendants's object size should not be negative")
-	}
-	if modifyCount < 0 && uint64(-modifyCount) > txMempoolEntry.CountWithDescendants {
-		panic("the Descendants's number should not be negative")
-	}
 	if modifySize < 0 {
 		txMempoolEntry.SizeWithDescendants -= uint64(-modifySize)
 	} else {
 		txMempoolEntry.SizeWithDescendants += uint64(modifySize)
+	}
+	if txMempoolEntry.SizeWithDescendants < 0 {
+		panic("the Descendants's object size should not be negative")
 	}
 
 	if modifyCount < 0 {
@@ -136,8 +134,11 @@ func (txMempoolEntry *TxMempoolEntry) UpdateDescendantState(modifySize int64, mo
 	} else {
 		txMempoolEntry.CountWithDescendants += uint64(modifyCount)
 	}
-	txMempoolEntry.ModFeesWithDescendants += modifyFee
+	if txMempoolEntry.CountWithDescendants < 0 {
+		panic("the Descendants's number should not be negative")
+	}
 
+	txMempoolEntry.ModFeesWithDescendants += modifyFee
 }
 
 func CompareTxMemPoolEntryByDescendantScore(src, dst interface{}) bool {
