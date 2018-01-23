@@ -563,18 +563,15 @@ func (mempool *Mempool) TrimToSize(sizeLimit int64, pvNoSpendsRemaining *algorit
 func (mempool *Mempool) DynamicMemoryUsage() int64 {
 	entry := TxMempoolEntry{}
 
-	size := int64(unsafe.Sizeof(&entry)+unsafe.Sizeof(utils.HashOne))*int64(mempool.MapTx.Size()) +
-		int64(len(mempool.vTxHashes)*int(unsafe.Sizeof(TxHash{}))) +
-		int64(mempool.MapNextTx.Size()*int(unsafe.Sizeof(refOutPoint{})+unsafe.Sizeof(&entry))) +
-		int64(len(mempool.MapDeltas)*int(unsafe.Sizeof(utils.HashOne)+unsafe.Sizeof(PriorityFeeDelta{}))) +
-		int64(mempool.MapLinks.Count()*int(unsafe.Sizeof(utils.HashOne)+unsafe.Sizeof(&entry))) +
-		int64(mempool.CachedInnerUsage)
-	fmt.Printf("================= mempool size : %d ===============\n", size)
 	mapTxSize := int64(unsafe.Sizeof(&entry)+unsafe.Sizeof(utils.HashOne)) * int64(mempool.MapTx.Size())
 	vTxHashSize := int64(len(mempool.vTxHashes) * int(unsafe.Sizeof(TxHash{})))
 	mapNextTxSize := int64(mempool.MapNextTx.Size() * int(unsafe.Sizeof(refOutPoint{})+unsafe.Sizeof(&entry)))
 	mapDeltaSize := int64(len(mempool.MapDeltas) * int(unsafe.Sizeof(utils.HashOne)+unsafe.Sizeof(PriorityFeeDelta{})))
 	mapLinkSize := int64(mempool.MapLinks.Count() * int(unsafe.Sizeof(utils.HashOne)+unsafe.Sizeof(&entry)))
+
+	size := mapTxSize + vTxHashSize + mapNextTxSize + mapDeltaSize + mapLinkSize + int64(mempool.CachedInnerUsage)
+	fmt.Printf("================= mempool size : %d ===============\n", size)
+
 	fmt.Printf("=========== mapTxSize : %d, vTxHashSize : %d, mapNextTxSize : %d, mapDeltaSize : %d"+
 		", mapLinkSize : %d,  CachedInnerUsage : %d \n",
 		mapTxSize, vTxHashSize, mapNextTxSize, mapDeltaSize, mapLinkSize, mempool.CachedInnerUsage)
