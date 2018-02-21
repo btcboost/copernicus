@@ -45,7 +45,11 @@ func (coinsViewCursor *CoinsViewCursor) Next() {
 	coinsViewCursor.cursor.Next()
 	//todo CDBIterator logic
 	coinEntry := NewCoinEntry(coinsViewCursor.keyTmp.outPoint)
-	coinsViewCursor.keyTmp.key = coinEntry.key
+	if !coinsViewCursor.Valid() || coinsViewCursor.GetKey() == nil {
+		coinsViewCursor.keyTmp.key = 0
+	} else {
+		coinsViewCursor.keyTmp.key = coinEntry.key
+	}
 
 }
 

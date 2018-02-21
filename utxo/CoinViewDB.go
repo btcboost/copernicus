@@ -17,7 +17,7 @@ type CoinViewDB struct {
 	bucketKey string
 }
 
-func (coinViewDB *CoinViewDB) GetCoin(outpoint *model.OutPoint) (coin *Coin) {
+func (coinViewDB *CoinViewDB) GetCoin(outpoint *model.OutPoint, coin *Coin) bool {
 	coinEntry := NewCoinEntry(outpoint)
 	var v []byte
 	err := coinViewDB.DBBase.View([]byte(coinViewDB.bucketKey), func(bucket database.Bucket) error {
@@ -25,11 +25,13 @@ func (coinViewDB *CoinViewDB) GetCoin(outpoint *model.OutPoint) (coin *Coin) {
 		return nil
 	})
 	buf := bytes.NewBuffer(v)
-	coin, err = DeserializeCoin(buf)
+	tmp, err := DeserializeCoin(buf)
 	if err != nil {
-		return nil
+		return false
 	}
-	return coin
+	coin.HeightAndIsCoinBase = tmp.HeightAndIsCoinBase
+	coin.TxOut = tmp.TxOut
+	return true
 }
 
 func (coinViewDB *CoinViewDB) HaveCoin(outpoint *model.OutPoint) bool {
@@ -71,7 +73,7 @@ func (coinViewDB *CoinViewDB) GetBestBlock() utils.Hash {
 	return hash
 }
 
-func (coinViewDB *CoinViewDB) BatchWrite(mapCoins map[model.OutPoint]CoinsCacheEntry) (bool, error) {
+func (coinViewDB *CoinViewDB) BatchWrite(mapCoins CacheCoins, hash *utils.Hash) (bool, error) {
 	count := 0
 	changed := 0
 	for k, v := range mapCoins {
@@ -99,11 +101,21 @@ func (coinViewDB *CoinViewDB) BatchWrite(mapCoins map[model.OutPoint]CoinsCacheE
 				}
 			}
 			changed++
-			delete(mapCoins, k)
 		}
 		count++
-
 	}
+	if !hash.IsNull() {
+		err := coinViewDB.DBBase.Update([]byte(coinViewDB.bucketKey), func(bucket database.Bucket) error {
+			err := bucket.Put([]byte{orm.DB_BEST_BLOCK}, hash.GetCloneBytes())
+			return err
+		})
+		if err != nil {
+			return false, err
+		}
+	}
+
+	// todo write to db
+	mapCoins = make(CacheCoins) // clear
 	fmt.Println("coin", "committed %d changed transcation outputs (out of %d) to coin databse", changed, count)
 	return true, nil
 

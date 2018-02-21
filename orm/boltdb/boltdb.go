@@ -8,7 +8,6 @@ import (
 )
 
 type BoltDB struct {
-	database.DBBase
 	*bolt.DB
 	filePath string
 }
