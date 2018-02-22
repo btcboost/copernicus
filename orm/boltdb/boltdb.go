@@ -26,7 +26,7 @@ func (boltdb *BoltDB) Type() string {
 	return "boltdb"
 }
 
-func (boltdb *BoltDB) View(key []byte, fn func(bucket database.Bucket) error) error {
+func (boltdb *BoltDB) View(key []byte, fn func(database.Bucket) error) error {
 	err := boltdb.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(key)
 		bucket := new(bucket)
@@ -37,7 +37,7 @@ func (boltdb *BoltDB) View(key []byte, fn func(bucket database.Bucket) error) er
 	return err
 }
 
-func (boltdb *BoltDB) Update(key []byte, fn func(bucket database.Bucket) error) error {
+func (boltdb *BoltDB) Update(key []byte, fn func(database.Bucket) error) error {
 	err := boltdb.DB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(key)
 		bucket := new(bucket)

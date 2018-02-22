@@ -25,7 +25,6 @@ func (coinEntry *CoinEntry) Serialize(writer io.Writer) error {
 	}
 	err = utils.WriteVarInt(writer, uint64(coinEntry.outpoint.Index))
 	return nil
-
 }
 
 func DeserializeCE(reader io.Reader) (coinEntry *CoinEntry, err error) {

@@ -77,7 +77,7 @@ func (coinsViewTest *CoinsViewTest) EstimateSize() uint64 {
 	return 0
 }
 
-func (coinsViewTest *CoinsViewTest) BatchWrite(cacheCoins CacheCoins, hashBlock *utils.Hash) (bool, error) {
+func (coinsViewTest *CoinsViewTest) BatchWrite(cacheCoins CacheCoins, hashBlock *utils.Hash) bool {
 	for outPoint, entry := range cacheCoins {
 		if entry.Flags&DIRTY != 0 {
 			// Same optimization used in CCoinsViewDB is to only write dirty entries.
@@ -94,7 +94,7 @@ func (coinsViewTest *CoinsViewTest) BatchWrite(cacheCoins CacheCoins, hashBlock 
 		coinsViewTest.hashBestBlock = *hashBlock
 	}
 
-	return true, nil
+	return true
 }
 
 func (coinsViewCacheTest *CoinsViewCacheTest) SelfTest() {

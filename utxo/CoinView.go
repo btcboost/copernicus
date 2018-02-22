@@ -14,7 +14,7 @@ type CoinsView interface {
 	GetCoin(point *model.OutPoint, coin *Coin) bool
 	HaveCoin(point *model.OutPoint) bool
 	GetBestBlock() utils.Hash
-	BatchWrite(coinsMap CacheCoins, hash *utils.Hash) (bool, error)
+	BatchWrite(coinsMap CacheCoins, hash *utils.Hash) bool
 	EstimateSize() uint64
 }
 
@@ -91,7 +91,7 @@ func (coinsViewCache *CoinsViewCache) EstimateSize() uint64 {
 	return 0
 }
 
-func (coinsViewCache *CoinsViewCache) BatchWrite(cacheCoins CacheCoins, hash *utils.Hash) (bool, error) {
+func (coinsViewCache *CoinsViewCache) BatchWrite(cacheCoins CacheCoins, hash *utils.Hash) bool {
 	for point, item := range cacheCoins {
 		// Ignore non-dirty entries (optimization).
 		if item.Flags&COIN_ENTRY_DIRTY != 0 {
@@ -124,11 +124,11 @@ func (coinsViewCache *CoinsViewCache) BatchWrite(cacheCoins CacheCoins, hash *ut
 	}
 	cacheCoins = make(CacheCoins)
 	coinsViewCache.hashBlock = *hash
-	return true, nil
+	return true
 }
 
 func (coinsViewCache *CoinsViewCache) Flush() bool {
-	ok, _ := coinsViewCache.base.BatchWrite(coinsViewCache.cacheCoins, &coinsViewCache.hashBlock)
+	ok := coinsViewCache.base.BatchWrite(coinsViewCache.cacheCoins, &coinsViewCache.hashBlock)
 	//coinsViewCache.cacheCoins = make(CacheCoins)
 	coinsViewCache.cachedCoinsUsage = 0
 	return ok

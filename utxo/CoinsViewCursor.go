@@ -3,6 +3,7 @@ package utxo
 import (
 	"bytes"
 
+	"github.com/boltdb/bolt"
 	"github.com/btcboost/copernicus/model"
 	"github.com/btcboost/copernicus/orm"
 	"github.com/btcboost/copernicus/orm/database"
@@ -11,13 +12,17 @@ import (
 
 type CoinsViewCursor struct {
 	hashBlock utils.Hash
-	keyTmp    KeyTmp
-	cursor    database.Cursor
+	keyTmp    CoinEntry
+	database.DBBase
+	bolt.Cursor
 }
 
-type KeyTmp struct {
-	key      byte
-	outPoint *model.OutPoint
+func NewCoinsViewCursor(cursor *bolt.Cursor, db database.DBBase, hash utils.Hash) *CoinsViewCursor {
+	return &CoinsViewCursor{
+		hashBlock: hash,
+		DBBase:    db,
+		Cursor:    *cursor,
+	}
 }
 
 func (coinsViewCursor *CoinsViewCursor) Valid() bool {
@@ -26,13 +31,13 @@ func (coinsViewCursor *CoinsViewCursor) Valid() bool {
 
 func (coinsViewCursor *CoinsViewCursor) GetKey() *model.OutPoint {
 	if coinsViewCursor.keyTmp.key == orm.DB_COIN {
-		return coinsViewCursor.keyTmp.outPoint
+		return coinsViewCursor.keyTmp.outpoint
 	}
 	return nil
 }
 
 func (coinsViewCursor *CoinsViewCursor) GetValue() *Coin {
-	v := coinsViewCursor.cursor.Value()
+	_, v := coinsViewCursor.Seek(coinsViewCursor.keyTmp.GetSerKey())
 	buf := bytes.NewBuffer(v)
 	coin, err := DeserializeCoin(buf)
 	if err != nil {
@@ -41,28 +46,21 @@ func (coinsViewCursor *CoinsViewCursor) GetValue() *Coin {
 	return coin
 }
 
-func (coinsViewCursor *CoinsViewCursor) Next() {
-	coinsViewCursor.cursor.Next()
-	//todo CDBIterator logic
-	coinEntry := NewCoinEntry(coinsViewCursor.keyTmp.outPoint)
+func (coinsViewCursor *CoinsViewCursor) Next() { // override
+	coinsViewCursor.Cursor.Next()
+	coinEntry := NewCoinEntry(coinsViewCursor.keyTmp.outpoint)
 	if !coinsViewCursor.Valid() || coinsViewCursor.GetKey() == nil {
 		coinsViewCursor.keyTmp.key = 0
 	} else {
 		coinsViewCursor.keyTmp.key = coinEntry.key
 	}
-
 }
 
 func (coinsViewCursor *CoinsViewCursor) GetValueSize() int {
-	return len(coinsViewCursor.cursor.Value())
+	_, v := coinsViewCursor.Seek(coinsViewCursor.keyTmp.GetSerKey())
+	return len(v)
 }
 
 func (coinsViewCursor *CoinsViewCursor) GetBestBlock() utils.Hash {
 	return coinsViewCursor.hashBlock
-}
-
-func NewCoinsViewCursor(cursor database.Cursor, hash utils.Hash) *CoinsViewCursor {
-	coinsViewCursor := new(CoinsViewCursor)
-	coinsViewCursor.hashBlock = hash
-	return coinsViewCursor
 }
