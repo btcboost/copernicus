@@ -1,9 +1,11 @@
 package database
 
+import "github.com/boltdb/bolt"
+
 type Bucket interface {
 	ForEach(func(k, v []byte) error) error
 
-	Cursor() Cursor
+	Cursor() *bolt.Cursor
 
 	Writable() bool
 
