@@ -75,7 +75,7 @@ func (coinViewDB *CoinViewDB) GetBestBlock() utils.Hash {
 	return hash
 }
 
-func (coinViewDB *CoinViewDB) BatchWrite(mapCoins CacheCoins, hash *utils.Hash) (bool, error) {
+func (coinViewDB *CoinViewDB) BatchWrite(mapCoins CacheCoins, hash *utils.Hash) bool {
 	count := 0
 	changed := 0
 	for k, v := range mapCoins {
@@ -87,19 +87,19 @@ func (coinViewDB *CoinViewDB) BatchWrite(mapCoins CacheCoins, hash *utils.Hash) 
 					return err
 				})
 				if err != nil {
-					return false, err
+					return false
 				}
 			} else {
 				b, err := v.Coin.GetSerialize()
 				if err != nil {
-					return false, err
+					return false
 				}
 				err = coinViewDB.DBBase.Update([]byte(bucketKey), func(bucket database.Bucket) error {
 					err := bucket.Put(coinEntry.GetSerKey(), b)
 					return err
 				})
 				if err != nil {
-					return false, err
+					return false
 				}
 			}
 			changed++
@@ -112,13 +112,13 @@ func (coinViewDB *CoinViewDB) BatchWrite(mapCoins CacheCoins, hash *utils.Hash) 
 			return err
 		})
 		if err != nil {
-			return false, err
+			return false
 		}
 	}
 
 	mapCoins = make(CacheCoins) // clear
 	fmt.Println("coin", "committed %d changed transcation outputs (out of %d) to coin databse", changed, count)
-	return true, nil
+	return true
 }
 
 func (coinViewDB *CoinViewDB) EstimateSize() int {
