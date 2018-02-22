@@ -12,30 +12,34 @@ import (
 	"github.com/btcboost/copernicus/utils"
 )
 
+const bucketKey = "chainstate"
+
 type CoinViewDB struct {
 	database.DBBase
-	bucketKey string
+	bucket database.Bucket
 }
 
-func (coinViewDB *CoinViewDB) GetCoin(outpoint *model.OutPoint) (coin *Coin) {
+func (coinViewDB *CoinViewDB) GetCoin(outpoint *model.OutPoint, coin *Coin) bool {
 	coinEntry := NewCoinEntry(outpoint)
 	var v []byte
-	err := coinViewDB.DBBase.View([]byte(coinViewDB.bucketKey), func(bucket database.Bucket) error {
+	err := coinViewDB.DBBase.View([]byte(bucketKey), func(bucket database.Bucket) error {
 		v = bucket.Get(coinEntry.GetSerKey())
 		return nil
 	})
 	buf := bytes.NewBuffer(v)
-	coin, err = DeserializeCoin(buf)
+	tmp, err := DeserializeCoin(buf)
 	if err != nil {
-		return nil
+		return false
 	}
-	return coin
+	coin.HeightAndIsCoinBase = tmp.HeightAndIsCoinBase
+	coin.TxOut = tmp.TxOut
+	return true
 }
 
 func (coinViewDB *CoinViewDB) HaveCoin(outpoint *model.OutPoint) bool {
 	coinEntry := NewCoinEntry(outpoint)
 	var v bool
-	err := coinViewDB.DBBase.View([]byte(coinViewDB.bucketKey), func(bucket database.Bucket) error {
+	err := coinViewDB.DBBase.View([]byte(bucketKey), func(bucket database.Bucket) error {
 		v = bucket.Exists(coinEntry.GetSerKey())
 		return nil
 	})
@@ -48,7 +52,7 @@ func (coinViewDB *CoinViewDB) HaveCoin(outpoint *model.OutPoint) bool {
 }
 
 func (coinViewDB *CoinViewDB) SetBestBlock(hash *utils.Hash) {
-	err := coinViewDB.DBBase.Update([]byte(coinViewDB.bucketKey), func(bucket database.Bucket) error {
+	err := coinViewDB.DBBase.Update([]byte(bucketKey), func(bucket database.Bucket) error {
 		err := bucket.Put([]byte{orm.DB_BEST_BLOCK}, hash.GetCloneBytes())
 		return err
 	})
@@ -60,7 +64,7 @@ func (coinViewDB *CoinViewDB) SetBestBlock(hash *utils.Hash) {
 func (coinViewDB *CoinViewDB) GetBestBlock() utils.Hash {
 	var v []byte
 	hash := utils.Hash{}
-	err := coinViewDB.DBBase.View([]byte(coinViewDB.bucketKey), func(bucket database.Bucket) error {
+	err := coinViewDB.DBBase.View([]byte(bucketKey), func(bucket database.Bucket) error {
 		v = bucket.Get([]byte{orm.DB_BEST_BLOCK})
 		return nil
 	})
@@ -71,47 +75,55 @@ func (coinViewDB *CoinViewDB) GetBestBlock() utils.Hash {
 	return hash
 }
 
-func (coinViewDB *CoinViewDB) BatchWrite(mapCoins map[model.OutPoint]CoinsCacheEntry) (bool, error) {
+func (coinViewDB *CoinViewDB) BatchWrite(mapCoins CacheCoins, hash *utils.Hash) bool {
 	count := 0
 	changed := 0
 	for k, v := range mapCoins {
 		if v.Flags&COIN_ENTRY_DIRTY == COIN_ENTRY_DIRTY {
 			coinEntry := NewCoinEntry(&k)
 			if v.Coin.IsSpent() {
-				err := coinViewDB.DBBase.Update([]byte(coinViewDB.bucketKey), func(bucket database.Bucket) error {
+				err := coinViewDB.DBBase.Update([]byte(bucketKey), func(bucket database.Bucket) error {
 					err := bucket.Delete(coinEntry.GetSerKey())
 					return err
 				})
 				if err != nil {
-					return false, err
+					return false
 				}
 			} else {
 				b, err := v.Coin.GetSerialize()
 				if err != nil {
-					return false, err
+					return false
 				}
-				err = coinViewDB.DBBase.Update([]byte(coinViewDB.bucketKey), func(bucket database.Bucket) error {
+				err = coinViewDB.DBBase.Update([]byte(bucketKey), func(bucket database.Bucket) error {
 					err := bucket.Put(coinEntry.GetSerKey(), b)
 					return err
 				})
 				if err != nil {
-					return false, err
+					return false
 				}
 			}
 			changed++
-			delete(mapCoins, k)
 		}
 		count++
-
 	}
-	fmt.Println("coin", "committed %d changed transcation outputs (out of %d) to coin databse", changed, count)
-	return true, nil
+	if !hash.IsNull() {
+		err := coinViewDB.DBBase.Update([]byte(bucketKey), func(bucket database.Bucket) error {
+			err := bucket.Put([]byte{orm.DB_BEST_BLOCK}, hash.GetCloneBytes())
+			return err
+		})
+		if err != nil {
+			return false
+		}
+	}
 
+	mapCoins = make(CacheCoins) // clear
+	fmt.Println("coin", "committed %d changed transcation outputs (out of %d) to coin databse", changed, count)
+	return true
 }
 
 func (coinViewDB *CoinViewDB) EstimateSize() int {
 	var size int
-	err := coinViewDB.DBBase.View([]byte(coinViewDB.bucketKey), func(bucket database.Bucket) error {
+	err := coinViewDB.DBBase.View([]byte(bucketKey), func(bucket database.Bucket) error {
 		size = bucket.EstimateSize()
 		return nil
 	})
@@ -123,21 +135,20 @@ func (coinViewDB *CoinViewDB) EstimateSize() int {
 }
 
 func (coinViewDB *CoinViewDB) Cursor() *CoinsViewCursor {
-	var cursor database.Cursor
-	//todo CCoinsViewDB Cursor
-	coinViewDB.View([]byte(coinViewDB.bucketKey), func(bucket database.Bucket) error {
-
-		for i := bucket.Cursor(); i.Last(); i.Next() {
-			if i.Seek([]byte{orm.DB_COIN}) {
-				cursor = i
-			}
+	cursor := NewCoinsViewCursor(coinViewDB.bucket.Cursor(), coinViewDB.DBBase, coinViewDB.GetBestBlock())
+	cursor.Seek([]byte{orm.DB_COIN})
+	if cursor.Valid() {
+		entry := NewCoinEntry(cursor.keyTmp.outpoint)
+		outpoint := cursor.GetKey()
+		if outpoint != nil {
+			entry.outpoint = outpoint
+			cursor.keyTmp.key = entry.key
 		}
-		return nil
+	} else {
+		cursor.keyTmp.key = 0
+	}
 
-	})
-	coinsViewCursor := NewCoinsViewCursor(cursor, coinViewDB.GetBestBlock())
-	return coinsViewCursor
-
+	return cursor
 }
 
 func NewCoinViewDB() *CoinViewDB {
@@ -147,13 +158,12 @@ func NewCoinViewDB() *CoinViewDB {
 	if err != nil {
 		panic(err)
 	}
-	_, err = db.CreateIfNotExists([]byte("chainstate"))
+	b, err := db.CreateIfNotExists([]byte("chainstate"))
 	if err != nil {
 		panic(err)
 	}
 	coinViewDB.DBBase = db
-	coinViewDB.bucketKey = "chainstate"
+	coinViewDB.bucket = b
 
 	return coinViewDB
-
 }

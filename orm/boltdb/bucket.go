@@ -21,12 +21,9 @@ func (bucket *bucket) ForEach(fn func(key, value []byte) error) error {
 	return nil
 }
 
-func (bucket *bucket) Cursor() database.Cursor {
+func (bucket *bucket) Cursor() *bolt.Cursor {
 	c := bucket.boltBucket.Cursor()
-	cursor := new(cursor)
-	cursor.boltCursor = c
-	cursor.bucket = bucket
-	return cursor
+	return c
 }
 
 func (bucket *bucket) Writable() bool {
