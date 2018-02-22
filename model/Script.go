@@ -359,8 +359,8 @@ func (script *Script) GetSigOpCount() (int, error) {
 }
 
 func (script *Script) GetScriptByte() []byte {
-	scriptByte := make([]byte, 0)
-	scriptByte = append(scriptByte, script.bytes...)
+	scriptByte := make([]byte, len(script.bytes))
+	copy(scriptByte, script.bytes)
 	return scriptByte
 }
 
