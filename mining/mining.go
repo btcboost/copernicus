@@ -134,9 +134,9 @@ func computeMaxGeneratedBlockSize() uint64 {
 // not-yet-selected ancestors as we go.
 func (ba *BlockAssembler) addPackageTxs() int {
 	descendantsUpdated := 0
+	blockchain.GMemPool.RLock()
+	defer blockchain.GMemPool.Unlock()
 	pool := blockchain.GMemPool // todo use global variable
-	pool.RLock()
-	defer pool.RUnlock()
 
 	consecutiveFailed := 0
 
