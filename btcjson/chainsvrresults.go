@@ -82,7 +82,7 @@ type GetAddedNodeInfoResult struct {
 type SoftForkDescription struct {
 	ID      string `json:"id"`
 	Version uint32 `json:"version"`
-	Reject  struct {
+	Reject struct {
 		Status bool `json:"status"`
 	} `json:"reject"`
 }
@@ -487,7 +487,7 @@ type GetWorkResult struct {
 
 // InfoChainResult models the data returned by the chain server getinfo command.
 type InfoChainResult struct {
-	Version         int32   `json:"version"`
+	Version         string  `json:"version"`
 	ProtocolVersion int32   `json:"protocolversion"`
 	Blocks          int32   `json:"blocks"`
 	TimeOffset      int64   `json:"timeoffset"`

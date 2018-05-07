@@ -1,5 +1,13 @@
 package rpc
 
+import (
+	"github.com/btcboost/copernicus/btcjson"
+	"github.com/btcboost/copernicus/blockchain"
+	"github.com/btcboost/copernicus/net/protocol"
+	"github.com/btcboost/copernicus/utils"
+	"github.com/btcboost/copernicus/conf"
+)
+
 var miscHandlers = map[string]commandHandler{
 	"getinfo":                handleGetInfo,
 	"getmemoryinfo":          handleGetmemoryinfo,
@@ -13,23 +21,22 @@ var miscHandlers = map[string]commandHandler{
 }
 
 func handleGetInfo(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	/*
-		best := s.cfg.Chain.BestSnapshot()
-		ret := &btcjson.InfoChainResult{
-			Version:         int32(1000000*appMajor + 10000*appMinor + 100*appPatch),
-			ProtocolVersion: int32(maxProtocolVersion),
-			Blocks:          best.Height,
-			TimeOffset:      int64(s.cfg.TimeSource.Offset().Seconds()),
-			Connections:     s.cfg.ConnMgr.ConnectedCount(),
-			Proxy:           cfg.Proxy,
-			Difficulty:      getDifficultyRatio(best.Bits, s.cfg.ChainParams),
-			TestNet:         cfg.TestNet3,
-			RelayFee:        cfg.minRelayTxFee.ToBTC(),
-		}
+	//best := s.cfg.Chain.BestSnapshot()
+	best := blockchain.GChainActive.Tip()
+	ret := &btcjson.InfoChainResult{
+		Version:         protocol.Copernicus,
+		ProtocolVersion: int32(protocol.BitcoinProtocolVersion),
+		Blocks:          int32(best.Height),
+		TimeOffset:      utils.GetTimeOffset(),
+		Connections:     s.cfg.ConnMgr.ConnectedCount(),
+		Proxy:           conf.AppConf.Proxy,
+		Difficulty:      getDifficultyRatio(best.Bits, s.cfg.ChainParams),
+		TestNet:         conf.AppConf.TestNet3,
+		RelayFee:        float64(blockchain.DefaultMinRelayTxFee),
+	}
 
-		return ret, nil
-	*/
-	return nil, nil
+	return ret, nil
+
 }
 
 func handleGetmemoryinfo(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
