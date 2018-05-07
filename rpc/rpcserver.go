@@ -116,7 +116,6 @@ var rpcHandlers map[string]commandHandler
 
 var mapCommands = map[string]commandHandler{}
 
-
 // internalRPCError is a convenience function to convert an internal error to
 // an RPC error with the appropriate code set.  It also logs the error to the
 // RPC server subsystem since internal errors really should not occur.  The
@@ -186,7 +185,6 @@ func handleAskWallet(s *Server, cmd interface{}, closeChan <-chan struct{}) (int
 }
 */
 
-
 // peerExists determines if a certain peer is currently connected given
 // information about all currently connected peers. Peer existence is
 // determined using either a target address or node id.
@@ -213,8 +211,6 @@ func messageToHex(msg msg.Message) (string, error) {
 	return hex.EncodeToString(buf.Bytes()), nil
 }
 
-
-
 // handleDebugLevel handles debuglevel commands.
 /*
 func handleDebugLevel(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
@@ -238,27 +234,31 @@ func handleDebugLevel(s *Server, cmd interface{}, closeChan <-chan struct{}) (in
 }
 */
 
+func getDifficulty(bi *core.BlockIndex) float64 {
+	if bi == nil {
+		return 1.0
+	}
+	return getDifficultyFromBits(bi.GetBlockHeader().Bits)
+}
+
 // getDifficultyRatio returns the proof-of-work difficulty as a multiple of the
 // minimum difficulty using the passed bits field from the header of a block.
-//func getDifficultyRatio(bits uint32, params *chaincfg.Params) float64 {
-//	// The minimum difficulty is the max possible proof-of-work limit bits
-//	// converted back to a number.  Note this is not the same as the proof of
-//	// work limit directly because the block difficulty is encoded in a block
-//	// with the compact form which loses precision.
-//	max := blockchain.CompactToBig(params.PowLimitBits)
-//	target := blockchain.CompactToBig(bits)
-//
-//	difficulty := new(big.Rat).SetFrac(max, target)
-//	outString := difficulty.FloatString(8)
-//	diff, err := strconv.ParseFloat(outString, 64)
-//	if err != nil {
-//		logs.Error("Cannot get difficulty: %v", err)
-//		return 0
-//	}
-//	return diff
-//}
+func getDifficultyFromBits(bits uint32) float64 {
+	shift := bits >> 24 & 0xff
+	diff := 0x0000ffff / float64(bits&0x00ffffff)
 
+	for shift < 29 {
+		diff *= 256
+		shift++
+	}
 
+	for shift > 29 {
+		diff /= 256
+		shift--
+	}
+
+	return diff
+}
 
 // softForkStatus converts a ThresholdState state into a human readable string
 // corresponding to the particular state.
@@ -529,7 +529,6 @@ func handleGetHashesPerSec(s *Server, cmd interface{}, closeChan <-chan struct{}
 }
 */
 
-
 // handleHelp implements the help command.
 /*
 func handleHelp(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
@@ -570,7 +569,6 @@ func handleHelp(s *Server, cmd interface{}, closeChan <-chan struct{}) (interfac
 	return help, nil
 }
 */
-
 
 // retrievedTx represents a transaction that was either loaded from the
 // transaction memory pool or from the database.  When a transaction is loaded
@@ -799,8 +797,6 @@ func fetchMempoolTxnsForAddress(s *Server, addr btcutil.Address, numToSkip, numR
 }
 */
 
-
-
 // handleStop implements the stop command.
 /*
 func handleStop(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
@@ -811,7 +807,6 @@ func handleStop(s *Server, cmd interface{}, closeChan <-chan struct{}) (interfac
 	return "btcd stopping.", nil
 }
 */
-
 
 // handleVersion implements the version command.
 //
@@ -1614,7 +1609,7 @@ func NewServer(config *ServerConfig) (*Server, error) {
 	return &rpc, nil
 }
 
-func appendCommand(name string , cmd commandHandler) bool {
+func appendCommand(name string, cmd commandHandler) bool {
 	if _, ok := mapCommands[name]; ok {
 		return false
 	}
@@ -1622,7 +1617,7 @@ func appendCommand(name string , cmd commandHandler) bool {
 	return true
 }
 
-func registerAllRPCCommands(){
+func registerAllRPCCommands() {
 	registerABCRPCCommands()
 	registerBlockchainRPCCommands()
 	registerMiningRPCCommands()

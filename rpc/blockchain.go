@@ -272,7 +272,6 @@ func handleGetBlockCount(s *Server, cmd interface{}, closeChan <-chan struct{}) 
 //	return vinList
 //}
 
-
 func handleGetBlock(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	/*
 		c := cmd.(*btcjson.GetBlockCmd)
@@ -394,75 +393,73 @@ func handleGetBlockHash(s *Server, cmd interface{}, closeChan <-chan struct{}) (
 	return nil, nil
 }
 
+/*
 func handleGetblockheader(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	/*
-		c := cmd.(*btcjson.GetBlockHeaderCmd)
+	c := cmd.(*btcjson.GetBlockHeaderCmd)
 
-		// Fetch the header from chain.
-		hash, err := chainhash.NewHashFromStr(c.Hash)
-		if err != nil {
-			return nil, rpcDecodeHexError(c.Hash)
+	// Fetch the header from chain.
+	hash, err := utils.GetHashFromStr(c.Hash)
+	if err != nil {
+		return nil, rpcDecodeHexError(c.Hash)
+	}
+	blockIndex, err := blockchain.GChainActive.FetchBlockIndex(hash) // todo realise: get BlockIndex by hash
+
+	if err != nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCBlockNotFound,
+			Message: "Block not found",
 		}
-		blockHeader, err := s.cfg.Chain.FetchHeader(hash)
+	}
+
+	// When the verbose flag is set false
+	if c.Verbose != nil && !*c.Verbose {
+		var headerBuf bytes.Buffer
+		err := blockIndex.BlockHeader.Serialize(&headerBuf)
 		if err != nil {
-			return nil, &btcjson.RPCError{
-				Code:    btcjson.ErrRPCBlockNotFound,
-				Message: "Block not found",
-			}
-		}
-
-		// When the verbose flag isn't set, simply return the serialized block
-		// header as a hex-encoded string.
-		if c.Verbose != nil && !*c.Verbose {
-			var headerBuf bytes.Buffer
-			err := blockHeader.Serialize(&headerBuf)
-			if err != nil {
-				context := "Failed to serialize block header"
-				return nil, internalRPCError(err.Error(), context)
-			}
-			return hex.EncodeToString(headerBuf.Bytes()), nil
-		}
-
-		// The verbose flag is set, so generate the JSON object and return it.
-
-		// Get the block height from chain.
-		blockHeight, err := s.cfg.Chain.BlockHeightByHash(hash)
-		if err != nil {
-			context := "Failed to obtain block height"
+			context := "Failed to serialize block header"
 			return nil, internalRPCError(err.Error(), context)
 		}
-		best := s.cfg.Chain.BestSnapshot()
+		return hex.EncodeToString(headerBuf.Bytes()), nil
+	}
 
-		// Get next block hash unless there are none.
-		var nextHashString string
-		if blockHeight < best.Height {
-			nextHash, err := s.cfg.Chain.BlockHashByHeight(blockHeight + 1)
-			if err != nil {
-				context := "No next block"
-				return nil, internalRPCError(err.Error(), context)
-			}
-			nextHashString = nextHash.String()
-		}
+	//best := s.cfg.Chain.BestSnapshot()
+	best := blockchain.GChainActive.Tip()
+	confirmations := -1
+	// Only report confirmations if the block is on the main chain
+	if blockchain.GChainActive.Contains(blockIndex) {
+		confirmations = best.Height - blockIndex.Height + 1
+	}
 
-		params := s.cfg.ChainParams
-		blockHeaderReply := btcjson.GetBlockHeaderVerboseResult{
-			Hash:          c.Hash,
-			Confirmations: uint64(1 + best.Height - blockHeight),
-			Height:        blockHeight,
-			Version:       blockHeader.Version,
-			VersionHex:    fmt.Sprintf("%08x", blockHeader.Version),
-			MerkleRoot:    blockHeader.MerkleRoot.String(),
-			NextHash:      nextHashString,
-			PreviousHash:  blockHeader.PrevBlock.String(),
-			Nonce:         uint64(blockHeader.Nonce),
-			Time:          blockHeader.Timestamp.Unix(),
-			Bits:          strconv.FormatInt(int64(blockHeader.Bits), 16),
-			Difficulty:    getDifficultyRatio(blockHeader.Bits, params),
-		}
-		return blockHeaderReply, nil
-	*/
-	return nil, nil
+	var previousblockhash string
+	if blockIndex.Prev != nil {
+		previousblockhash = blockIndex.Prev.BlockHash.ToString()
+	}
+
+	var nextblockhash string
+	next := blockchain.GChainActive.Next(blockIndex)
+	if next != nil {
+		nextblockhash = next.BlockHash.ToString()
+	}
+
+	blockHeaderReply := btcjson.GetBlockHeaderVerboseResult{
+		Hash:          c.Hash,
+		Confirmations: uint64(confirmations),
+		Height:        blockIndex.Height,
+		Version:       blockIndex.BlockHeader.Version,
+		VersionHex:    fmt.Sprintf("%08x", blockIndex.BlockHeader.Version),
+		MerkleRoot:    blockIndex.BlockHeader.MerkleRoot.ToString(),
+		Time:          blockIndex.BlockHeader.Time,
+		Mediantime:    blockIndex.GetMedianTimePast(),
+		Nonce:         uint64(blockIndex.BlockHeader.Nonce),
+		Bits:          fmt.Sprintf("%8x", blockIndex.BlockHeader.Bits),
+		Difficulty:    getDifficulty(blockIndex),
+		Chainwork:     blockIndex.ChainWork.Text(16),
+		PreviousHash:  previousblockhash,
+		NextHash:      nextblockhash,
+	}
+	return blockHeaderReply, nil
 }
+*/
 
 func handleGetchaintips(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
