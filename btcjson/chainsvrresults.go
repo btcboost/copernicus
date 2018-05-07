@@ -4,7 +4,10 @@
 
 package btcjson
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"math/big"
+)
 
 // GetBlockHeaderVerboseResult models the data from the getblockheader command when
 // the verbose flag is set.  When the verbose flag is not set, getblockheader
@@ -17,9 +20,11 @@ type GetBlockHeaderVerboseResult struct {
 	VersionHex    string  `json:"versionHex"`
 	MerkleRoot    string  `json:"merkleroot"`
 	Time          int64   `json:"time"`
+	Mediantime    int64   `json:"mediantime"`
 	Nonce         uint64  `json:"nonce"`
 	Bits          string  `json:"bits"`
 	Difficulty    float64 `json:"difficulty"`
+	Chainwork     big.Int `josn:"chainwork"`
 	PreviousHash  string  `json:"previousblockhash,omitempty"`
 	NextHash      string  `json:"nextblockhash,omitempty"`
 }
