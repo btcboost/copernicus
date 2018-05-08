@@ -624,7 +624,6 @@ func handleGetBlockTemplateLongPoll(s *Server, longPollID string, useCoinbaseVal
 }
 */
 
-
 func handleGetblocktemplate(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	// See https://en.bitcoin.it/wiki/BIP_0022 and
 	// https://en.bitcoin.it/wiki/BIP_0023 for more details.
