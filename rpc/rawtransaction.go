@@ -1,5 +1,22 @@
 package rpc
 
+import (
+	"bytes"
+	"encoding/hex"
+
+	"github.com/btcboost/copernicus/blockchain"
+	"github.com/btcboost/copernicus/btcjson"
+	"github.com/btcboost/copernicus/core"
+	"github.com/btcboost/copernicus/mempool"
+	"github.com/btcboost/copernicus/net/msg"
+	"github.com/btcboost/copernicus/utils"
+	"github.com/btcboost/copernicus/utxo"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
+)
+
 var rawTransactionHandlers = map[string]commandHandler{
 	"getrawtransaction":    handleGetRawTransaction,
 	"createrawtransaction": handleCreateRawTransaction,
@@ -9,124 +26,201 @@ var rawTransactionHandlers = map[string]commandHandler{
 }
 
 func handleGetRawTransaction(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	/*
-		c := cmd.(*btcjson.GetRawTransactionCmd)
+	c := cmd.(*btcjson.GetRawTransactionCmd)
 
-		// Convert the provided transaction hash hex to a Hash.
-		txHash, err := chainhash.NewHashFromStr(c.Txid)
-		if err != nil {
-			return nil, rpcDecodeHexError(c.Txid)
+	// Convert the provided transaction hash hex to a Hash.
+	txHash, err := utils.GetHashFromStr(c.Txid)
+	if err != nil {
+		return nil, rpcDecodeHexError(c.Txid)
+	}
+
+	verbose := false
+	if c.Verbose != nil {
+		verbose = *c.Verbose != 0
+	}
+
+	tx, _, ok := GetTransaction(txHash, true)
+	if !ok {
+		if blockchain.GTxIndex {
+			return nil, btcjson.NewRPCError(btcjson.ErrRPCInvalidAddressOrKey,
+				"No such mempool or blockchain transaction")
+		}
+		return nil, btcjson.NewRPCError(btcjson.ErrRPCInvalidAddressOrKey,
+			"No such mempool transaction. Use -txindex to enable blockchain transaction queries. Use gettransaction for wallet transactions.")
+	}
+
+	buf := bytes.NewBuffer(nil)
+	err = tx.Serialize(buf)
+	if err != nil {
+		return nil, rpcDecodeHexError(c.Txid)
+	}
+	strHex := hex.EncodeToString(buf.Bytes())
+	if !verbose {
+		return strHex, nil
+	}
+	rawTxn, err := createTxRawResult(s.cfg.ChainParams, mtx, txHash.String(),
+		blkHeader, blkHashStr, blkHeight, chainHeight)
+	if err != nil {
+		return nil, err
+	}
+	return *rawTxn, nil
+}
+
+// createTxRawResult converts the passed transaction and associated parameters
+// to a raw transaction JSON object.
+func createTxRawResult(chainParams *chaincfg.Params, mtx *wire.MsgTx,
+	txHash string, blkHeader *wire.BlockHeader, blkHash string,
+	blkHeight int32, chainHeight int32) (*btcjson.TxRawResult, error) {
+
+	mtxHex, err := messageToHex(mtx)
+	if err != nil {
+		return nil, err
+	}
+
+	txReply := &btcjson.TxRawResult{
+		Hex:      mtxHex,
+		Txid:     txHash,
+		Hash:     mtx.WitnessHash().String(),
+		Size:     int32(mtx.SerializeSize()),
+		Vsize:    int32(mempool.GetTxVirtualSize(btcutil.NewTx(mtx))),
+		Vin:      createVinList(mtx),
+		Vout:     createVoutList(mtx, chainParams, nil),
+		Version:  mtx.Version,
+		LockTime: mtx.LockTime,
+	}
+
+	if blkHeader != nil {
+		// This is not a typo, they are identical in bitcoind as well.
+		txReply.Time = blkHeader.Timestamp.Unix()
+		txReply.Blocktime = blkHeader.Timestamp.Unix()
+		txReply.BlockHash = blkHash
+		txReply.Confirmations = uint64(1 + chainHeight - blkHeight)
+	}
+
+	return txReply, nil
+}
+
+// createVinList returns a slice of JSON objects for the inputs of the passed
+// transaction.
+func createVinList(mtx *wire.MsgTx) []btcjson.Vin {
+	// Coinbase transactions only have a single txin by definition.
+	vinList := make([]btcjson.Vin, len(mtx.TxIn))
+	if blockchain.IsCoinBaseTx(mtx) {
+		txIn := mtx.TxIn[0]
+		vinList[0].Coinbase = hex.EncodeToString(txIn.SignatureScript)
+		vinList[0].Sequence = txIn.Sequence
+		vinList[0].Witness = witnessToHex(txIn.Witness)
+		return vinList
+	}
+
+	for i, txIn := range mtx.TxIn {
+		// The disassembled string will contain [error] inline
+		// if the script doesn't fully parse, so ignore the
+		// error here.
+		disbuf, _ := txscript.DisasmString(txIn.SignatureScript)
+
+		vinEntry := &vinList[i]
+		vinEntry.Txid = txIn.PreviousOutPoint.Hash.String()
+		vinEntry.Vout = txIn.PreviousOutPoint.Index
+		vinEntry.Sequence = txIn.Sequence
+		vinEntry.ScriptSig = &btcjson.ScriptSig{
+			Asm: disbuf,
+			Hex: hex.EncodeToString(txIn.SignatureScript),
 		}
 
-		verbose := false
-		if c.Verbose != nil {
-			verbose = *c.Verbose != 0
+		if mtx.HasWitness() {
+			vinEntry.Witness = witnessToHex(txIn.Witness)
+		}
+	}
+
+	return vinList
+}
+
+// createVoutList returns a slice of JSON objects for the outputs of the passed
+// transaction.
+func createVoutList(mtx *wire.MsgTx, chainParams *chaincfg.Params, filterAddrMap map[string]struct{}) []btcjson.Vout {
+	voutList := make([]btcjson.Vout, 0, len(mtx.TxOut))
+	for i, v := range mtx.TxOut {
+		// The disassembled string will contain [error] inline if the
+		// script doesn't fully parse, so ignore the error here.
+		disbuf, _ := txscript.DisasmString(v.PkScript)
+
+		// Ignore the error here since an error means the script
+		// couldn't parse and there is no additional information about
+		// it anyways.
+		scriptClass, addrs, reqSigs, _ := txscript.ExtractPkScriptAddrs(
+			v.PkScript, chainParams)
+
+		// Encode the addresses while checking if the address passes the
+		// filter when needed.
+		passesFilter := len(filterAddrMap) == 0
+		encodedAddrs := make([]string, len(addrs))
+		for j, addr := range addrs {
+			encodedAddr := addr.EncodeAddress()
+			encodedAddrs[j] = encodedAddr
+
+			// No need to check the map again if the filter already
+			// passes.
+			if passesFilter {
+				continue
+			}
+			if _, exists := filterAddrMap[encodedAddr]; exists {
+				passesFilter = true
+			}
 		}
 
-		// Try to fetch the transaction from the memory pool and if that fails,
-		// try the block database.
-		var mtx *wire.MsgTx
-		var blkHash *chainhash.Hash
-		var blkHeight int32
-		tx, err := s.cfg.TxMemPool.FetchTransaction(txHash)
-		if err != nil {
-			if s.cfg.TxIndex == nil {
-				return nil, &btcjson.RPCError{
-					Code: btcjson.ErrRPCNoTxInfo,
-					Message: "The transaction index must be " +
-						"enabled to query the blockchain " +
-						"(specify --txindex)",
+		if !passesFilter {
+			continue
+		}
+
+		var vout btcjson.Vout
+		vout.N = uint32(i)
+		vout.Value = btcutil.Amount(v.Value).ToBTC()
+		vout.ScriptPubKey.Addresses = encodedAddrs
+		vout.ScriptPubKey.Asm = disbuf
+		vout.ScriptPubKey.Hex = hex.EncodeToString(v.PkScript)
+		vout.ScriptPubKey.Type = scriptClass.String()
+		vout.ScriptPubKey.ReqSigs = int32(reqSigs)
+
+		voutList = append(voutList, vout)
+	}
+
+	return voutList
+}
+
+func GetTransaction(hash *utils.Hash, allowSlow bool) (*core.Tx, *utils.Hash, bool) {
+	tx := mempool.GetTx(hash) // todo realize: in mempool get *core.Tx by hash
+	if tx != nil {
+		return tx, nil, true
+	}
+
+	if blockchain.GTxIndex {
+		blockchain.GBlockTree.ReadTxIndex(hash)
+		blockchain.OpenBlockFile(, true)
+		// todo complete
+	}
+
+	// use coin database to locate block that contains transaction, and scan it
+	var indexSlow *core.BlockIndex
+	if allowSlow {
+		coin := utxo.AccessByTxid(blockchain.GCoinsTip, hash)
+		if !coin.IsSpent() {
+			indexSlow = blockchain.GChainActive.FetchBlockIndexByHeight(coin.GetHeight())   // todo realise : get BlockIndex by height
+		}
+	}
+
+	if indexSlow != nil {
+		var block *core.Block
+		if blockchain.ReadBlockFromDisk(block, indexSlow, msg.ActiveNetParams) {
+			for _, tx := range block.Txs{
+				if *hash == tx.TxHash() {
+					return tx, indexSlow.BlockHash, true
 				}
 			}
-
-			// Look up the location of the transaction.
-			blockRegion, err := s.cfg.TxIndex.TxBlockRegion(txHash)
-			if err != nil {
-				context := "Failed to retrieve transaction location"
-				return nil, internalRPCError(err.Error(), context)
-			}
-			if blockRegion == nil {
-				return nil, rpcNoTxInfoError(txHash)
-			}
-
-			// Load the raw transaction bytes from the database.
-			var txBytes []byte
-			err = s.cfg.DB.View(func(dbTx database.Tx) error {
-				var err error
-				txBytes, err = dbTx.FetchBlockRegion(blockRegion)
-				return err
-			})
-			if err != nil {
-				return nil, rpcNoTxInfoError(txHash)
-			}
-
-			// When the verbose flag isn't set, simply return the serialized
-			// transaction as a hex-encoded string.  This is done here to
-			// avoid deserializing it only to reserialize it again later.
-			if !verbose {
-				return hex.EncodeToString(txBytes), nil
-			}
-
-			// Grab the block height.
-			blkHash = blockRegion.Hash
-			blkHeight, err = s.cfg.Chain.BlockHeightByHash(blkHash)
-			if err != nil {
-				context := "Failed to retrieve block height"
-				return nil, internalRPCError(err.Error(), context)
-			}
-
-			// Deserialize the transaction
-			var msgTx wire.MsgTx
-			err = msgTx.Deserialize(bytes.NewReader(txBytes))
-			if err != nil {
-				context := "Failed to deserialize transaction"
-				return nil, internalRPCError(err.Error(), context)
-			}
-			mtx = &msgTx
-		} else {
-			// When the verbose flag isn't set, simply return the
-			// network-serialized transaction as a hex-encoded string.
-			if !verbose {
-				// Note that this is intentionally not directly
-				// returning because the first return value is a
-				// string and it would result in returning an empty
-				// string to the client instead of nothing (nil) in the
-				// case of an error.
-				mtxHex, err := messageToHex(tx.MsgTx())
-				if err != nil {
-					return nil, err
-				}
-				return mtxHex, nil
-			}
-
-			mtx = tx.MsgTx()
 		}
+	}
 
-		// The verbose flag is set, so generate the JSON object and return it.
-		var blkHeader *wire.BlockHeader
-		var blkHashStr string
-		var chainHeight int32
-		if blkHash != nil {
-			// Fetch the header from chain.
-			header, err := s.cfg.Chain.FetchHeader(blkHash)
-			if err != nil {
-				context := "Failed to fetch block header"
-				return nil, internalRPCError(err.Error(), context)
-			}
-
-			blkHeader = &header
-			blkHashStr = blkHash.String()
-			chainHeight = s.cfg.Chain.BestSnapshot().Height
-		}
-
-		rawTxn, err := createTxRawResult(s.cfg.ChainParams, mtx, txHash.String(),
-			blkHeader, blkHashStr, blkHeight, chainHeight)
-		if err != nil {
-			return nil, err
-		}
-		return *rawTxn, nil
-	*/
-	return nil, nil
+	return nil, nil, false
 }
 
 func handleCreateRawTransaction(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {

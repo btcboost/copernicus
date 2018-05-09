@@ -413,7 +413,7 @@ func handleGetblockheader(s *Server, cmd interface{}, closeChan <-chan struct{})
 	if err != nil {
 		return nil, rpcDecodeHexError(c.Hash)
 	}
-	blockIndex := blockchain.GChainActive.FetchBlockIndex(hash) // todo realise: get BlockIndex by hash
+	blockIndex := blockchain.GChainActive.FetchBlockIndexByHash(hash) // todo realise: get BlockIndex by hash
 
 	if blockIndex == nil {
 		return nil, &btcjson.RPCError{

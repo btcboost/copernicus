@@ -317,12 +317,11 @@ type ScriptSig struct {
 // getrawtransaction, decoderawtransaction, and searchrawtransaction use the
 // same structure.
 type Vin struct {
-	Coinbase  string     `json:"coinbase"`
+	Coinbase  string     `json:"coinbase"` // todo omitempth tag
 	Txid      string     `json:"txid"`
 	Vout      uint32     `json:"vout"`
 	ScriptSig *ScriptSig `json:"scriptSig"`
 	Sequence  uint32     `json:"sequence"`
-	Witness   []string   `json:"txinwitness"`
 }
 
 // IsCoinBase returns a bool to show if a Vin is a Coinbase one or not.
@@ -330,42 +329,17 @@ func (v *Vin) IsCoinBase() bool {
 	return len(v.Coinbase) > 0
 }
 
-// HasWitness returns a bool to show if a Vin has any witness data associated
-// with it or not.
-func (v *Vin) HasWitness() bool {
-	return len(v.Witness) > 0
-}
-
 // MarshalJSON provides a custom Marshal method for Vin.
 func (v *Vin) MarshalJSON() ([]byte, error) {
 	if v.IsCoinBase() {
 		coinbaseStruct := struct {
-			Coinbase string   `json:"coinbase"`
-			Sequence uint32   `json:"sequence"`
-			Witness  []string `json:"witness,omitempty"`
+			Coinbase string `json:"coinbase"`
+			Sequence uint32 `json:"sequence"`
 		}{
 			Coinbase: v.Coinbase,
 			Sequence: v.Sequence,
-			Witness:  v.Witness,
 		}
 		return json.Marshal(coinbaseStruct)
-	}
-
-	if v.HasWitness() {
-		txStruct := struct {
-			Txid      string     `json:"txid"`
-			Vout      uint32     `json:"vout"`
-			ScriptSig *ScriptSig `json:"scriptSig"`
-			Witness   []string   `json:"txinwitness"`
-			Sequence  uint32     `json:"sequence"`
-		}{
-			Txid:      v.Txid,
-			Vout:      v.Vout,
-			ScriptSig: v.ScriptSig,
-			Witness:   v.Witness,
-			Sequence:  v.Sequence,
-		}
-		return json.Marshal(txStruct)
 	}
 
 	txStruct := struct {
@@ -506,19 +480,17 @@ type InfoChainResult struct {
 
 // TxRawResult models the data from the getrawtransaction command.
 type TxRawResult struct {
-	Hex           string `json:"hex"`
-	Txid          string `json:"txid"`
-	Hash          string `json:"hash,omitempty"`
-	Size          int32  `json:"size,omitempty"`
-	Vsize         int32  `json:"vsize,omitempty"`
+	TxID          string `json:"txid"`
+	Hash          string `json:"hash"`
+	Size          int    `json:"size"`
 	Version       int32  `json:"version"`
-	LockTime      uint32 `json:"locktime"`
+	LockTime      int64  `json:"locktime"`
 	Vin           []Vin  `json:"vin"`
 	Vout          []Vout `json:"vout"`
-	BlockHash     string `json:"blockhash,omitempty"`
-	Confirmations uint64 `json:"confirmations,omitempty"`
-	Time          int64  `json:"time,omitempty"`
-	Blocktime     int64  `json:"blocktime,omitempty"`
+	BlockHash     string `json:"blockhash"`
+	Confirmations int    `json:"confirmations"`
+	Time          int64  `json:"time"`
+	Blocktime     int64  `json:"blocktime"`
 }
 
 // SearchRawTransactionsResult models the data from the searchrawtransaction
