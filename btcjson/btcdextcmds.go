@@ -44,20 +44,6 @@ func NewNodeCmd(subCmd NodeSubCmd, target string, connectSubCmd *string) *NodeCm
 	}
 }
 
-// DebugLevelCmd defines the debuglevel JSON-RPC command.  This command is not a
-// standard Bitcoin command.  It is an extension for btcd.
-type DebugLevelCmd struct {
-	LevelSpec string
-}
-
-// NewDebugLevelCmd returns a new DebugLevelCmd which can be used to issue a
-// debuglevel JSON-RPC command.  This command is not a standard Bitcoin command.
-// It is an extension for btcd.
-func NewDebugLevelCmd(levelSpec string) *DebugLevelCmd {
-	return &DebugLevelCmd{
-		LevelSpec: levelSpec,
-	}
-}
 
 // GenerateCmd defines the generate JSON-RPC command.
 type GenerateCmd struct {
@@ -111,28 +97,14 @@ func NewGetHeadersCmd(blockLocators []string, hashStop string) *GetHeadersCmd {
 	}
 }
 
-// VersionCmd defines the version JSON-RPC command.
-//
-// NOTE: This is a btcsuite extension ported from
-// github.com/decred/dcrd/dcrjson.
-type VersionCmd struct{}
-
-// NewVersionCmd returns a new instance which can be used to issue a JSON-RPC
-// version command.
-//
-// NOTE: This is a btcsuite extension ported from
-// github.com/decred/dcrd/dcrjson.
-func NewVersionCmd() *VersionCmd { return new(VersionCmd) }
 
 func init() {
 	// No special flags for commands in this file.
 	flags := UsageFlag(0)
 
-	MustRegisterCmd("debuglevel", (*DebugLevelCmd)(nil), flags)
 	MustRegisterCmd("node", (*NodeCmd)(nil), flags)
 	MustRegisterCmd("generate", (*GenerateCmd)(nil), flags)
 	MustRegisterCmd("getbestblock", (*GetBestBlockCmd)(nil), flags)
 	MustRegisterCmd("getcurrentnet", (*GetCurrentNetCmd)(nil), flags)
 	MustRegisterCmd("getheaders", (*GetHeadersCmd)(nil), flags)
-	MustRegisterCmd("version", (*VersionCmd)(nil), flags)
 }

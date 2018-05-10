@@ -21,6 +21,10 @@ var rawTransactionHandlers = map[string]commandHandler{
 	"decoderawtransaction": handleDecodeRawTransaction,
 	"decodescript":         handleDecodeScript,
 	"sendrawtransaction":   handleSendRawTransaction,
+
+	"signrawtransaction": handleSignRawTransaction,
+	"gettxoutproof":      handleGetTxoutProof,
+	"verifytxoutproof":   handleVerifyTxoutProof,
 }
 
 func handleGetRawTransaction(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
@@ -486,6 +490,18 @@ func handleSendRawTransaction(s *Server, cmd interface{}, closeChan <-chan struc
 	return tx.Hash().String(), nil*/
 	return nil, nil
 } //Todo
+
+func handleSignRawTransaction(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	return nil, nil
+}
+
+func handleGetTxoutProof(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	return nil, nil
+}
+
+func handleVerifyTxoutProof(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	return nil, nil
+}
 
 func registeRawTransactionRPCCommands() {
 	for name, handler := range rawTransactionHandlers {

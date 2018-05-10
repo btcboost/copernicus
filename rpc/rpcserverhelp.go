@@ -660,7 +660,6 @@ var rpcResultTypes = map[string][]interface{}{
 	"decodescript":          {(*btcjson.DecodeScriptResult)(nil)},
 	"generate":              {(*[]string)(nil)},
 	"getaddednodeinfo":      {(*[]string)(nil), (*[]btcjson.GetAddedNodeInfoResult)(nil)},
-	"getbestblock":          {(*btcjson.GetBestBlockResult)(nil)},
 	"getbestblockhash":      {(*string)(nil)},
 	"getblock":              {(*string)(nil), (*btcjson.GetBlockVerboseResult)(nil)},
 	"getblockcount":         {(*int64)(nil)},
@@ -695,21 +694,6 @@ var rpcResultTypes = map[string][]interface{}{
 	"validateaddress":       {(*btcjson.ValidateAddressChainResult)(nil)},
 	"verifychain":           {(*bool)(nil)},
 	"verifymessage":         {(*bool)(nil)},
-	"version":               {(*map[string]btcjson.VersionResult)(nil)},
-
-	// Websocket commands.
-	"loadtxfilter":              nil,
-	"session":                   {(*btcjson.SessionResult)(nil)},
-	"notifyblocks":              nil,
-	"stopnotifyblocks":          nil,
-	"notifynewtransactions":     nil,
-	"stopnotifynewtransactions": nil,
-	"notifyreceived":            nil,
-	"stopnotifyreceived":        nil,
-	"notifyspent":               nil,
-	"stopnotifyspent":           nil,
-	"rescan":                    nil,
-	"rescanblocks":              {(*[]btcjson.RescannedBlock)(nil)},
 }
 
 // helpCacher provides a concurrent safe type that provides help and usage for

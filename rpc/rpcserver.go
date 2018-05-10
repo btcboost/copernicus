@@ -33,14 +33,6 @@ import (
 	"github.com/btcboost/copernicus/utils"
 )
 
-// API version constants
-const (
-	jsonrpcSemverString = "1.3.0"
-	jsonrpcSemverMajor  = 1
-	jsonrpcSemverMinor  = 3
-	jsonrpcSemverPatch  = 0
-)
-
 const (
 	// rpcAuthTimeoutSeconds is the number of seconds a connection to the
 	// RPC server is allowed to stay open without authenticating before it
@@ -169,22 +161,6 @@ func rpcNoTxInfoError(txHash *utils.Hash) *btcjson.RPCError {
 //	}
 //}
 
-// handleUnimplemented is the handler for commands that should ultimately be
-// supported but are not yet implemented.
-
-func handleUnimplemented(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	return nil, ErrRPCUnimplemented
-}
-
-// handleAskWallet is the handler for commands that are recognized as valid, but
-// are unable to answer correctly since it involves wallet state.
-// These commands will be implemented in btcwallet.
-/*
-func handleAskWallet(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	return nil, ErrRPCNoWallet
-}
-*/
-
 // peerExists determines if a certain peer is currently connected given
 // information about all currently connected peers. Peer existence is
 // determined using either a target address or node id.
@@ -210,29 +186,6 @@ func messageToHex(msg msg.Message) (string, error) {
 
 	return hex.EncodeToString(buf.Bytes()), nil
 }
-
-// handleDebugLevel handles debuglevel commands.
-/*
-func handleDebugLevel(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	c := cmd.(*btcjson.DebugLevelCmd)
-
-	// Special show command to list supported subsystems.
-	if c.LevelSpec == "show" {
-		return fmt.Sprintf("Supported subsystems %v",
-			supportedSubsystems()), nil
-	}
-
-	err := parseAndSetDebugLevels(c.LevelSpec)
-	if err != nil {
-		return nil, &btcjson.RPCError{
-			Code:    btcjson.ErrRPCInvalidParams.Code,
-			Message: err.Error(),
-		}
-	}
-
-	return "Done.", nil
-}
-*/
 
 func getDifficulty(bi *core.BlockIndex) float64 {
 	if bi == nil {
@@ -808,20 +761,7 @@ func handleStop(s *Server, cmd interface{}, closeChan <-chan struct{}) (interfac
 }
 */
 
-// handleVersion implements the version command.
-//
-// NOTE: This is a btcsuite extension ported from github.com/decred/dcrd.
-func handleVersion(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	result := map[string]btcjson.VersionResult{
-		"btcdjsonrpcapi": {
-			VersionString: jsonrpcSemverString,
-			Major:         jsonrpcSemverMajor,
-			Minor:         jsonrpcSemverMinor,
-			Patch:         jsonrpcSemverPatch,
-		},
-	}
-	return result, nil
-}
+
 
 // Server provides a concurrent safe RPC server to a chain server.
 type Server struct {
@@ -956,17 +896,7 @@ func (s *Server) decrementClients() {
 	atomic.AddInt32(&s.numClients, -1)
 }
 
-// checkAuth checks the HTTP Basic authentication supplied by a wallet
-// or RPC client in the HTTP request r.  If the supplied authentication
-// does not match the username and password expected, a non-nil error is
-// returned.
-//
-// This check is time-constant.
-//
-// The first bool return value signifies auth success (true if successful) and
-// the second bool return value specifies whether the user can change the state
-// of the server (true) or whether the user is limited (false). The second is
-// always false if the first is.
+
 func (s *Server) checkAuth(r *http.Request, require bool) (bool, bool, error) {
 	authhdr := r.Header["Authorization"]
 	if len(authhdr) <= 0 {
@@ -1009,35 +939,17 @@ type parsedRPCCmd struct {
 	err    *btcjson.RPCError
 }
 
-// standardCmdResult checks that a parsed command is a standard Bitcoin JSON-RPC
-// command and runs the appropriate handler to reply to the command.  Any
-// commands which are not recognized or not implemented will return an error
-// suitable for use in replies.
+
 func (s *Server) standardCmdResult(cmd *parsedRPCCmd, closeChan <-chan struct{}) (interface{}, error) {
 	handler, ok := rpcHandlers[cmd.method]
 	if ok {
 		goto handled
 	}
-	//_, ok = rpcAskWallet[cmd.method]
-	//if ok {
-	//	handler = handleAskWallet
-	//	goto handled
-	//}
-	//_, ok = rpcUnimplemented[cmd.method]
-	//if ok {
-	//	handler = handleUnimplemented
-	//	goto handled
-	//}
-	//return nil, btcjson.ErrRPCMethodNotFound
 handled:
 
 	return handler(s, cmd.cmd, closeChan)
 }
 
-// parseCmd parses a JSON-RPC request object into known concrete command.  The
-// err field of the returned parsedRPCCmd struct will contain an RPC error that
-// is suitable for use in replies if the command is invalid in some way such as
-// an unregistered command or invalid parameters.
 func parseCmd(request *btcjson.Request) *parsedRPCCmd {
 	var parsedCmd parsedRPCCmd
 	parsedCmd.id = request.ID
@@ -1135,24 +1047,6 @@ func (s *Server) jsonRPCRead(w http.ResponseWriter, r *http.Request, isAdmin boo
 		}
 	}
 	if jsonErr == nil {
-		// The JSON-RPC 1.0 spec defines that notifications must have their "id"
-		// set to null and states that notifications do not have a response.
-		//
-		// A JSON-RPC 2.0 notification is a request with "json-rpc":"2.0", and
-		// without an "id" member. The specification states that notifications
-		// must not be responded to. JSON-RPC 2.0 permits the null value as a
-		// valid request id, therefore such requests are not notifications.
-		//
-		// Bitcoin Core serves requests with "id":null or even an absent "id",
-		// and responds to such requests with "id":null in the response.
-		//
-		// Btcd does not respond to any request without and "id" or "id":null,
-		// regardless the indicated JSON-RPC protocol version unless RPC quirks
-		// are enabled. With RPC quirks enabled, such requests will be responded
-		// to if the reqeust does not indicate JSON-RPC version.
-		//
-		// RPC quirks can be enabled by the user to avoid compatibility issues
-		// with software relying on Core's behavior.
 		if request.ID == nil && !(conf.CFG.RPCQuirks && request.Jsonrpc == "") {
 			return
 		}
