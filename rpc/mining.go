@@ -1,10 +1,14 @@
 package rpc
 
 import (
+	"bytes"
+	"encoding/hex"
+	"fmt"
 	"math/big"
 
 	"github.com/btcboost/copernicus/blockchain"
 	"github.com/btcboost/copernicus/btcjson"
+	"github.com/btcboost/copernicus/core"
 	"github.com/btcboost/copernicus/mining"
 	"github.com/btcboost/copernicus/net/msg"
 	"github.com/btcboost/copernicus/utils"
@@ -59,7 +63,7 @@ func handleGetNetWorkhashPS(s *Server, cmd interface{}, closeChan <-chan struct{
 	maxTime := minTime
 	for i := 0; i < int(lookup); i++ {
 		b = b.Prev
-		time := b.GetBlockTime()
+		// time := b.GetBlockTime()
 		//minTime = utils.Min(time, minTime)          TODO
 		//maxTime = utils.Max(time, maxTime)  		  TODO
 	}
@@ -593,9 +597,9 @@ func handleGetblocktemplate(s *Server, cmd interface{}, closeChan <-chan struct{
 
 	switch mode {
 	case "template":
-		return handleGetBlockTemplateRequest(s, request, closeChan)
+		// return handleGetBlockTemplateRequest(request, closeChan)
 	case "proposal":
-		return handleGetBlockTemplateProposal(s, request)
+		return handleGetBlockTemplateProposal(request)
 	}
 
 	return nil, &btcjson.RPCError{
@@ -603,6 +607,105 @@ func handleGetblocktemplate(s *Server, cmd interface{}, closeChan <-chan struct{
 		Message: "Invalid mode",
 	}
 	return nil, nil
+}
+
+func handleGetBlockTemplateProposal(request *btcjson.TemplateRequest) (interface{}, error) {
+	hexData := request.Data
+	if hexData == "" {
+		return false, &btcjson.RPCError{
+			Code: btcjson.ErrRPCType,
+			Message: fmt.Sprintf("Data must contain the " +
+				"hex-encoded serialized block that is being " +
+				"proposed"),
+		}
+	}
+
+	// Ensure the provided data is sane and deserialize the proposed block.
+	// todo check: whether the length of data source is multiples of 2. That is to say if it is necessary for the following branch
+	if len(hexData)%2 != 0 {
+		hexData = "0" + hexData
+	}
+	dataBytes, err := hex.DecodeString(hexData)
+	if err != nil {
+		return false, &btcjson.RPCError{
+			Code: btcjson.ErrRPCDeserialization,
+			Message: fmt.Sprintf("Data must be "+
+				"hexadecimal string (not %q)", hexData),
+		}
+	}
+	var block core.Block
+	if err := block.Deserialize(bytes.NewReader(dataBytes)); err != nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCDeserialization,
+			Message: "Block decode failed: " + err.Error(),
+		}
+	}
+
+	hash := block.Hash
+	bindex := blockchain.GChainActive.FetchBlockIndexByHash(hash) // todo realise
+	if bindex != nil {
+		if bindex.IsValid(core.BlockValidScripts) {
+			return nil, &btcjson.RPCError{
+				Code:    btcjson.RPCErrorCode(1),
+				Message: "duplicate",
+			}
+		}
+		if bindex.Status&core.BlockFailedMask != 0 {
+			return nil, &btcjson.RPCError{
+				Code:    btcjson.RPCErrorCode(1),
+				Message: "duplicate-invalid",
+			}
+		}
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.RPCErrorCode(1),
+			Message: "duplicate-inconclusive",
+		}
+	}
+
+	indexPrev := core.ActiveChain.Tip()
+	// TestBlockValidity only supports blocks built on the current Tip
+	if block.BlockHeader.HashPrevBlock != indexPrev.BlockHash {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.RPCErrorCode(1),
+			Message: "inconclusive-not-best-prevblk",
+		}
+	}
+	state := core.ValidationState{}
+	blockchain.TestBlockValidity(msg.ActiveNetParams, &state, &block, indexPrev, false, true)
+	return BIP22ValidationResult(&state)
+}
+
+func BIP22ValidationResult(state *core.ValidationState) (interface{}, error) {
+	if state.IsValid() {
+		return nil, nil
+	}
+
+	strRejectReason := state.GetRejectReason()
+	if state.IsError() {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCVerify,
+			Message: strRejectReason,
+		}
+	}
+
+	if state.IsInvalid() {
+		if strRejectReason == "" {
+			return nil, &btcjson.RPCError{
+				Code:    btcjson.RPCErrorCode(1),
+				Message: "rejected",
+			}
+		}
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.RPCErrorCode(1),
+			Message: strRejectReason,
+		}
+	}
+
+	// Should be impossible
+	return nil, &btcjson.RPCError{
+		Code:    btcjson.RPCErrorCode(1),
+		Message: "valid?",
+	}
 }
 
 // handleSubmitBlock implements the submitblock command.
