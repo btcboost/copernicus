@@ -1,7 +1,16 @@
 package rpc
 
+import (
+	"github.com/btcboost/copernicus/btcjson"
+	"github.com/btcboost/copernicus/blockchain"
+	"github.com/btcboost/copernicus/net/msg"
+	"math/big"
+	"github.com/btcboost/copernicus/mining"
+	"github.com/btcboost/copernicus/utils"
+)
+
 var miningHandlers = map[string]commandHandler{
-	"getnetworkhashps":      handleGetnetworkhashps,
+	"getnetworkhashps":      handleGetNetWorkhashPS,
 	"getmininginfo":         handleGetMiningInfo,
 	"prioritisetransaction": handlePrioritisetransaction,
 	"getblocktemplate":      handleGetblocktemplate,
@@ -14,140 +23,86 @@ var miningHandlers = map[string]commandHandler{
 	"estimatesmartpriority": handleEstimatesmartpriority,
 }
 
-func handleGetnetworkhashps(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	// handleGetNetworkHashPS implements the getnetworkhashps command.
-	/*
-		// Note: All valid error return paths should return an int64.
-		// Literal zeros are inferred as int, and won't coerce to int64
-		// because the return value is an interface{}.
+func handleGetNetWorkhashPS(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.GetNetworkHashPSCmd)
 
-		c := cmd.(*btcjson.GetNetworkHashPSCmd)
+	lookup := int64(120)
+	height := -1
+	if c.Blocks != nil {
+		lookup = *c.Blocks
+	}
 
-		// When the passed height is too high or zero, just return 0 now
-		// since we can't reasonably calculate the number of network hashes
-		// per second from invalid values.  When it's negative, use the current
-		// best block height.
-		best := s.cfg.Chain.BestSnapshot()
-		endHeight := int32(-1)
-		if c.Height != nil {
-			endHeight = int32(*c.Height)
-		}
-		if endHeight > best.Height || endHeight == 0 {
-			return int64(0), nil
-		}
-		if endHeight < 0 {
-			endHeight = best.Height
-		}
+	if c.Height != nil {
+		height = *c.Height
+	}
 
-		// Calculate the number of blocks per retarget interval based on the
-		// chain parameters.
-		blocksPerRetarget := int32(s.cfg.ChainParams.TargetTimespan /
-			s.cfg.ChainParams.TargetTimePerBlock)
+	block := blockchain.GChainActive.Tip()
+	if height > 0 || height < blockchain.GChainActive.Height() {
+		block = blockchain.GChainActive.Chain[height]
+	}
 
-		// Calculate the starting block height based on the passed number of
-		// blocks.  When the passed value is negative, use the last block the
-		// difficulty changed as the starting height.  Also make sure the
-		// starting height is not before the beginning of the chain.
-		numBlocks := int32(120)
-		if c.Blocks != nil {
-			numBlocks = int32(*c.Blocks)
-		}
-		var startHeight int32
-		if numBlocks <= 0 {
-			startHeight = endHeight - ((endHeight % blocksPerRetarget) + 1)
-		} else {
-			startHeight = endHeight - numBlocks
-		}
-		if startHeight < 0 {
-			startHeight = 0
-		}
-		logs.Debugf("Calculating network hashes per second from %d to %d",
-			startHeight, endHeight)
+	if block == nil || block.Height != 0 {
+		return 0, nil
+	}
 
-		// Find the min and max block timestamps as well as calculate the total
-		// amount of work that happened between the start and end blocks.
-		var minTimestamp, maxTimestamp time.Time
-		totalWork := big.NewInt(0)
-		for curHeight := startHeight; curHeight <= endHeight; curHeight++ {
-			hash, err := s.cfg.Chain.BlockHashByHeight(curHeight)
-			if err != nil {
-				context := "Failed to fetch block hash"
-				return nil, internalRPCError(err.Error(), context)
-			}
+	if lookup <= 0 {
+		lookup = int64(block.Height)%msg.ActiveNetParams.DifficultyAdjustmentInterval() + int64(1)
+	}
 
-			// Fetch the header from chain.
-			header, err := s.cfg.Chain.FetchHeader(hash)
-			if err != nil {
-				context := "Failed to fetch block header"
-				return nil, internalRPCError(err.Error(), context)
-			}
+	if lookup > int64(block.Height) {
+		lookup = int64(block.Height)
+	}
 
-			if curHeight == startHeight {
-				minTimestamp = header.Timestamp
-				maxTimestamp = minTimestamp
-			} else {
-				totalWork.Add(totalWork, blockchain.CalcWork(header.Bits))
+	b := block
+	minTime := b.GetBlockTime()
+	maxTime := minTime
+	for i := 0; i < int(lookup); i++ {
+		b = b.Prev
+		time := b.GetBlockTime()
+		//minTime = utils.Min(time, minTime)          TODO
+		//maxTime = utils.Max(time, maxTime)  		  TODO
+	}
 
-				if minTimestamp.After(header.Timestamp) {
-					minTimestamp = header.Timestamp
-				}
-				if maxTimestamp.Before(header.Timestamp) {
-					maxTimestamp = header.Timestamp
-				}
-			}
-		}
+	if minTime == maxTime {
+		return 0, nil
+	}
 
-		// Calculate the difference in seconds between the min and max block
-		// timestamps and avoid division by zero in the case where there is no
-		// time difference.
-		timeDiff := int64(maxTimestamp.Sub(minTimestamp) / time.Second)
-		if timeDiff == 0 {
-			return int64(0), nil
-		}
+	workDiff := new(big.Int).Sub(&block.ChainWork, &b.ChainWork)
+	timeDiff := int64(maxTime - minTime)
 
-		hashesPerSec := new(big.Int).Div(totalWork, big.NewInt(timeDiff))
-		return hashesPerSec.Int64(), nil
-	*/
-	return nil, nil
+	hashesPerSec := new(big.Int).Div(workDiff, big.NewInt(timeDiff))
+	return hashesPerSec, nil
 }
 
 func handleGetMiningInfo(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	// handleGetMiningInfo implements the getmininginfo command. We only return the
-	// fields that are not related to wallet functionality.
-	/*
-		// Create a default getnetworkhashps command to use defaults and make
-		// use of the existing getnetworkhashps handler.
-		gnhpsCmd := btcjson.NewGetNetworkHashPSCmd(nil, nil)
-		networkHashesPerSecIface, err := handleGetNetworkHashPS(s, gnhpsCmd,
-			closeChan)
-		if err != nil {
-			return nil, err
+	gnhpsCmd := btcjson.NewGetNetworkHashPSCmd(nil, nil)
+	networkHashesPerSecIface, err := handleGetNetWorkhashPS(s, gnhpsCmd,
+		closeChan)
+	if err != nil {
+		return nil, err
+	}
+	networkHashesPerSec, ok := networkHashesPerSecIface.(int64)
+	if !ok {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInternal.Code,
+			Message: "networkHashesPerSec is not an int64",
 		}
-		networkHashesPerSec, ok := networkHashesPerSecIface.(int64)
-		if !ok {
-			return nil, &btcjson.RPCError{
-				Code:    btcjson.ErrRPCInternal.Code,
-				Message: "networkHashesPerSec is not an int64",
-			}
-		}
+	}
 
-		best := s.cfg.Chain.BestSnapshot()
-		result := btcjson.GetMiningInfoResult{
-			Blocks:             int64(best.Height),
-			CurrentBlockSize:   best.BlockSize,
-			CurrentBlockWeight: best.BlockWeight,
-			CurrentBlockTx:     best.NumTxns,
-			Difficulty:         getDifficultyRatio(best.Bits, s.cfg.ChainParams),
-			Generate:           s.cfg.CPUMiner.IsMining(),
-			GenProcLimit:       s.cfg.CPUMiner.NumWorkers(),
-			HashesPerSec:       int64(s.cfg.CPUMiner.HashesPerSecond()),
-			NetworkHashPS:      networkHashesPerSec,
-			PooledTx:           uint64(s.cfg.TxMemPool.Count()),
-			TestNet:            cfg.TestNet3,
-		}
-		return &result, nil
-	*/
-	return nil, nil
+	block := blockchain.GChainActive.Tip()
+	result := btcjson.GetMiningInfoResult{
+		Blocks:                  int64(block.Height),
+		CurrentBlockSize:        mining.GetLastBlockSize(),
+		CurrentBlockTx:          mining.GetLastBlockTx(),
+		Difficulty:              getDifficulty(block),
+		BlockPriorityPercentage: utils.GetArg("-blockprioritypercentage", 0),
+		//Errors:              ,                            // TODO
+		NetworkHashPS: networkHashesPerSec,
+		//PooledTx:           uint64(mempool.Size()),              TODO
+		Chain: msg.ActiveNetParams.Name,
+	}
+	return &result, nil
+
 }
 
 func handlePrioritisetransaction(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
@@ -623,7 +578,6 @@ func handleGetBlockTemplateLongPoll(s *Server, longPollID string, useCoinbaseVal
 	return result, nil
 }
 */
-
 
 func handleGetblocktemplate(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	// See https://en.bitcoin.it/wiki/BIP_0022 and

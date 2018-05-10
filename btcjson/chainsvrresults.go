@@ -468,18 +468,15 @@ type Vout struct {
 
 // GetMiningInfoResult models the data from the getmininginfo command.
 type GetMiningInfoResult struct {
-	Blocks             int64   `json:"blocks"`
-	CurrentBlockSize   uint64  `json:"currentblocksize"`
-	CurrentBlockWeight uint64  `json:"currentblockweight"`
-	CurrentBlockTx     uint64  `json:"currentblocktx"`
-	Difficulty         float64 `json:"difficulty"`
-	Errors             string  `json:"errors"`
-	Generate           bool    `json:"generate"`
-	GenProcLimit       int32   `json:"genproclimit"`
-	HashesPerSec       int64   `json:"hashespersec"`
-	NetworkHashPS      int64   `json:"networkhashps"`
-	PooledTx           uint64  `json:"pooledtx"`
-	TestNet            bool    `json:"testnet"`
+	Blocks                  int64   `json:"blocks"`
+	CurrentBlockSize        uint64  `json:"currentblocksize"`
+	CurrentBlockTx          uint64  `json:"currentblocktx"`
+	Difficulty              float64 `json:"difficulty"`
+	BlockPriorityPercentage int64   `json:"blockprioritypercentage"`
+	Errors                  string  `json:"errors"`
+	NetworkHashPS           int64   `json:"networkhashps"`
+	PooledTx                uint64  `json:"pooledtx"`
+	Chain                   string  `json:"chain"`
 }
 
 // GetWorkResult models the data from the getwork command.
