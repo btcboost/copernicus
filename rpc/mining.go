@@ -1,11 +1,12 @@
 package rpc
 
 import (
-	"github.com/btcboost/copernicus/btcjson"
-	"github.com/btcboost/copernicus/blockchain"
-	"github.com/btcboost/copernicus/net/msg"
 	"math/big"
+
+	"github.com/btcboost/copernicus/blockchain"
+	"github.com/btcboost/copernicus/btcjson"
 	"github.com/btcboost/copernicus/mining"
+	"github.com/btcboost/copernicus/net/msg"
 	"github.com/btcboost/copernicus/utils"
 )
 
@@ -102,7 +103,6 @@ func handleGetMiningInfo(s *Server, cmd interface{}, closeChan <-chan struct{}) 
 		Chain: msg.ActiveNetParams.Name,
 	}
 	return &result, nil
-
 }
 
 func handlePrioritisetransaction(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
@@ -582,28 +582,26 @@ func handleGetBlockTemplateLongPoll(s *Server, longPollID string, useCoinbaseVal
 func handleGetblocktemplate(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	// See https://en.bitcoin.it/wiki/BIP_0022 and
 	// https://en.bitcoin.it/wiki/BIP_0023 for more details.
-	/*
-		c := cmd.(*btcjson.GetBlockTemplateCmd)
-		request := c.Request
+	c := cmd.(*btcjson.GetBlockTemplateCmd)
+	request := c.Request
 
-		// Set the default mode and override it if supplied.
-		mode := "template"
-		if request != nil && request.Mode != "" {
-			mode = request.Mode
-		}
+	// Set the default mode and override it if supplied.
+	mode := "template"
+	if request != nil && request.Mode != "" {
+		mode = request.Mode
+	}
 
-		switch mode {
-		case "template":
-			return handleGetBlockTemplateRequest(s, request, closeChan)
-		case "proposal":
-			return handleGetBlockTemplateProposal(s, request)
-		}
+	switch mode {
+	case "template":
+		return handleGetBlockTemplateRequest(s, request, closeChan)
+	case "proposal":
+		return handleGetBlockTemplateProposal(s, request)
+	}
 
-		return nil, &btcjson.RPCError{
-			Code:    btcjson.ErrRPCInvalidParameter,
-			Message: "Invalid mode",
-		}
-	*/
+	return nil, &btcjson.RPCError{
+		Code:    btcjson.ErrRPCInvalidParameter,
+		Message: "Invalid mode",
+	}
 	return nil, nil
 }
 
