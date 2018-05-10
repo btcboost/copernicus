@@ -24,14 +24,14 @@ func handleGetConnectionCount(s *Server, cmd interface{}, closeChan <-chan struc
 
 func handlePing(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	// Ask server to ping \o_
-/*	nonce, err := utils.RandomUint64()
-	if err != nil {
-		return nil, internalRPCError("Not sending ping - failed to "+
-			"generate nonce: "+err.Error(), "")
-	}
-	s.cfg.ConnMgr.BroadcastMessage(msg.InitPingMessage(nonce))
+	/*	nonce, err := utils.RandomUint64()
+		if err != nil {
+			return nil, internalRPCError("Not sending ping - failed to "+
+				"generate nonce: "+err.Error(), "")
+		}
+		s.cfg.ConnMgr.BroadcastMessage(msg.InitPingMessage(nonce))
 
-	return nil, nil*/
+		return nil, nil*/
 	return nil, nil
 }
 
@@ -209,13 +209,13 @@ func handleGetAddedNodeInfo(s *Server, cmd interface{}, closeChan <-chan struct{
 
 func handleGetNetTotals(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	/*
-		totalBytesRecv, totalBytesSent := s.cfg.ConnMgr.NetTotals()
-		reply := &btcjson.GetNetTotalsResult{
-			TotalBytesRecv: totalBytesRecv,
-			TotalBytesSent: totalBytesSent,
-			TimeMillis:     time.Now().UTC().UnixNano() / int64(time.Millisecond),
+			totalBytesRecv, totalBytesSent := s.cfg.ConnMgr.NetTotals()
+			reply := &btcjson.GetNetTotalsResult{
+				TotalBytesRecv: totalBytesRecv,
+				TotalBytesSent: totalBytesSent,
+				TimeMillis:     time.Now().UTC().UnixNano() / int64(time.Millisecond),
+			}
 		}
-	}
 	*/
 	return nil, nil
 }
@@ -239,7 +239,6 @@ func handleClearbanned(s *Server, cmd interface{}, closeChan <-chan struct{}) (i
 func handleSetnetworkactive(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
-
 
 func registerNetRPCCommands() {
 	for name, handler := range netHandlers {

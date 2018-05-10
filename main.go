@@ -8,6 +8,7 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/astaxie/beego/logs"
 	"github.com/btcboost/copernicus/conf"
 	"github.com/btcboost/copernicus/database"
 	"github.com/btcboost/copernicus/net/msg"
@@ -15,7 +16,6 @@ import (
 	"github.com/btcboost/copernicus/rpc"
 	"github.com/btcboost/copernicus/utils"
 
-	"github.com/astaxie/beego/logs"
 	_ "github.com/btcboost/copernicus/log"
 )
 

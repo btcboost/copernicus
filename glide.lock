@@ -1,5 +1,5 @@
 hash: 0264c7c597c173e64798a65faab760b463f148d63a0857bc40476e5c6c2be6dd
-updated: 2018-05-04T10:35:00.172235538+08:00
+updated: 2018-05-10T16:01:19.868598+08:00
 imports:
 - name: github.com/astaxie/beego
   version: cab8458c1c4a5a3b4bf5192922be620e6dede15b
@@ -9,27 +9,6 @@ imports:
   - utils
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
-- name: github.com/btcboost/copernicus
-  version: 192397f40bf47ebe7d6bda35a423150eb710414b
-  subpackages:
-  - blockchain
-  - conf
-  - consensus
-  - container
-  - core
-  - crypto
-  - database
-  - log
-  - mempool
-  - net/conn
-  - net/msg
-  - net/network
-  - net/p2p
-  - net/protocol
-  - policy
-  - utils
-  - utils/base58
-  - utxo
 - name: github.com/btcboost/secp256k1-go
   version: d1d3521a2faf654cee837aad57713ec4c814791f
   subpackages:
@@ -64,6 +43,8 @@ imports:
   - json/parser
   - json/scanner
   - json/token
+- name: github.com/jessevdk/go-flags
+  version: 1c38ed7ad0cc3d9e66649ac398c30e45f395c4eb
 - name: github.com/magiconair/properties
   version: 2c9e9502788518c97fe44e8955cd069417ee89df
 - name: github.com/mitchellh/mapstructure
@@ -112,11 +93,11 @@ imports:
   subpackages:
   - reflectutil
 - name: golang.org/x/crypto
-  version: 122d919ec1efcfb58483215da23f815853e24b81
+  version: 2d027ae1dddd4694d54f7a8b6cbe78dca8720226
   subpackages:
   - ripemd160
 - name: golang.org/x/sys
-  version: 78d5f264b493f125018180c204871ecf58a2dce1
+  version: 7dfd1290c7917b7ba22824b9d24954ab3002fe24
   subpackages:
   - unix
 - name: golang.org/x/text
@@ -127,7 +108,7 @@ imports:
 - name: gopkg.in/fatih/set.v0
   version: 168a5d71ba0669ae06888225478d73a113f1687e
 - name: gopkg.in/go-playground/validator.v8
-  version: 14984d91328f9612b58443cbdf4a077d4fd71091
+  version: ffe836d7363bc7ab3f56d2fc90ce09bfb5a0c2c5
 - name: gopkg.in/yaml.v2
   version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
 testImports:

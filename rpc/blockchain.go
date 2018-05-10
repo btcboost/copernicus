@@ -1,14 +1,26 @@
 package rpc
 
+import (
+	"bytes"
+	"encoding/hex"
+	"fmt"
+
+	"github.com/btcboost/copernicus/blockchain"
+	"github.com/btcboost/copernicus/btcjson"
+	"github.com/btcboost/copernicus/core"
+	"github.com/btcboost/copernicus/net/msg"
+	"github.com/btcboost/copernicus/utils"
+)
+
 var blockchainHandlers = map[string]commandHandler{
 	"getblockchaininfo":     handleGetBlockChainInfo,
 	"getbestblockhash":      handleGetBestBlockHash,
 	"getblockcount":         handleGetBlockCount,
 	"getblock":              handleGetBlock,
 	"getblockhash":          handleGetBlockHash,
-	"getblockheader":        handleGetblockheader,
+	"getblockheader":        handleGetblockheader, // complete
 	"getchaintips":          handleGetchaintips,
-	"getdifficulty":         handleGetdifficulty,
+	"getdifficulty":         handleGetdifficulty, //complete
 	"getmempoolancestors":   handleGetmempoolancestors,
 	"getmempooldescendants": handleGetmempooldescendants,
 	"getmempoolinfo":        handleGetmempoolinfo,
@@ -393,7 +405,6 @@ func handleGetBlockHash(s *Server, cmd interface{}, closeChan <-chan struct{}) (
 	return nil, nil
 }
 
-/*
 func handleGetblockheader(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	c := cmd.(*btcjson.GetBlockHeaderCmd)
 
@@ -402,9 +413,9 @@ func handleGetblockheader(s *Server, cmd interface{}, closeChan <-chan struct{})
 	if err != nil {
 		return nil, rpcDecodeHexError(c.Hash)
 	}
-	blockIndex, err := blockchain.GChainActive.FetchBlockIndex(hash) // todo realise: get BlockIndex by hash
+	blockIndex := blockchain.GChainActive.FetchBlockIndexByHash(hash) // todo realise: get BlockIndex by hash
 
-	if err != nil {
+	if blockIndex == nil {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCBlockNotFound,
 			Message: "Block not found",
@@ -459,18 +470,14 @@ func handleGetblockheader(s *Server, cmd interface{}, closeChan <-chan struct{})
 	}
 	return blockHeaderReply, nil
 }
-*/
 
 func handleGetchaintips(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
 func handleGetdifficulty(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	/*
-		best := s.cfg.Chain.BestSnapshot()
-		return getDifficultyRatio(best.Bits, s.cfg.ChainParams), nil
-	*/
-	return nil, nil
+	best := blockchain.GChainActive.Tip()
+	return getDifficulty(best), nil
 }
 
 func handleGetmempoolancestors(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
@@ -678,6 +685,23 @@ func handleVerifychain(s *Server, cmd interface{}, closeChan <-chan struct{}) (i
 }
 
 func handlePreciousblock(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.PreciousBlockCmd)
+	hash, err := utils.GetHashFromStr(c.BlockHash)
+	if err != nil {
+		return nil, err
+	}
+	blockIndex := blockchain.GChainActive.FetchBlockIndex(hash)
+	if blockIndex == nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCBlockNotFound,
+			Message: "Block not found",
+		}
+	}
+	state := core.ValidationState{}
+	blockchain.PreciousBlock(msg.ActiveNetParams, &state, blockIndex)
+	if !state.IsValid() {
+
+	}
 	return nil, nil
 }
 
