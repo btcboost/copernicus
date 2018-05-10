@@ -3,10 +3,12 @@ package rpc
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 
 	"github.com/btcboost/copernicus/blockchain"
 	"github.com/btcboost/copernicus/btcjson"
 	"github.com/btcboost/copernicus/core"
+	"github.com/btcboost/copernicus/crypto"
 	"github.com/btcboost/copernicus/mempool"
 	"github.com/btcboost/copernicus/net/msg"
 	"github.com/btcboost/copernicus/utils"
@@ -109,8 +111,63 @@ func createVinList(tx *core.Tx) []btcjson.Vin {
 	return vinList
 }
 
-func ScriptToAsmStr(script *core.Script, atteptSighashDecode bool) string {		// todo complete
-	return ""
+func ScriptToAsmStr(script *core.Script, attemptSighashDecode bool) string {		// todo complete
+	var str string
+	var opcode byte
+	vch := make([]byte, 0)
+	b := script.GetScriptByte()
+	for i := 0; i < len(b); i++ {
+		if len(str) != 0 {
+			str += " "
+		}
+
+		if !script.GetOp(&i, &opcode, &vch) {
+			str += "[error]"
+			return str
+		}
+
+		if opcode >= 0 && opcode <= core.OP_PUSHDATA4 {
+			if len(vch) <= 4 {
+				num, _ := core.GetCScriptNum(vch, false, core.DefaultMaxNumSize)
+				str += fmt.Sprintf("%d", num.Value)
+			} else {
+				// the IsUnspendable check makes sure not to try to decode
+				// OP_RETURN data that may match the format of a signature
+				if attemptSighashDecode && !script.IsUnspendable(){
+					var strSigHashDecode string
+					// goal: only attempt to decode a defined sighash type from
+					// data that looks like a signature within a scriptSig. This
+					// won't decode correctly formatted public keys in Pubkey or
+					// Multisig scripts due to the restrictions on the pubkey
+					// formats (see IsCompressedOrUncompressedPubKey) being
+					// incongruous with the checks in CheckSignatureEncoding.
+					flags := crypto.ScriptVerifyStrictenc
+					if vch[len(vch)-1] &  crypto.SigHashForkID != 0{
+						// If the transaction is using SIGHASH_FORKID, we need
+						// to set the apropriate flag.
+						// TODO: Remove after the Hard Fork.
+						flags |= crypto.ScriptEnableSigHashForkID
+					}
+					if ok, _:= crypto.CheckSignatureEncoding(vch, uint32(flags)); ok {
+						chsigHashType := vch[len(vch) - 1]
+						if  t, ok := crypto.MapSigHashTypes[chsigHashType]; ok{		// todo realise define
+							strSigHashDecode = "[" + t + "]"
+							// remove the sighash type byte. it will be replaced
+							// by the decode.
+							vch = vch[:len(vch) - 1]
+						}
+					}
+
+					str += hex.EncodeToString(vch) + strSigHashDecode
+				} else {
+					str += hex.EncodeToString(vch)
+				}
+			}
+		}else {
+			str += core.GetOpName(int(opcode))
+		}
+	}
+	return str
 }
 
 // createVoutList returns a slice of JSON objects for the outputs of the passed

@@ -9,27 +9,6 @@ imports:
   - utils
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
-- name: github.com/btcboost/copernicus
-  version: 192397f40bf47ebe7d6bda35a423150eb710414b
-  subpackages:
-  - blockchain
-  - conf
-  - consensus
-  - container
-  - core
-  - crypto
-  - database
-  - log
-  - mempool
-  - net/conn
-  - net/msg
-  - net/network
-  - net/p2p
-  - net/protocol
-  - policy
-  - utils
-  - utils/base58
-  - utxo
 - name: github.com/btcboost/secp256k1-go
   version: d1d3521a2faf654cee837aad57713ec4c814791f
   subpackages:
