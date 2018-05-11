@@ -6,12 +6,6 @@ import (
 	"github.com/btcboost/copernicus/net/protocol"
 	"github.com/btcboost/copernicus/utils"
 	"github.com/btcboost/copernicus/conf"
-	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/btcec"
-	"github.com/btcsuite/btcutil"
-	"encoding/base64"
-	"bytes"
 )
 
 var miscHandlers = map[string]commandHandler{
@@ -65,7 +59,7 @@ func handleCreatemultisig(s *Server, cmd interface{}, closeChan <-chan struct{})
 func handleVerifyMessage(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	c := cmd.(*btcjson.VerifyMessageCmd)
 
-	// Decode the provided address.
+/*	// Decode the provided address.
 	params := s.cfg.ChainParams
 	addr, err := btcutil.DecodeAddress(c.Address, params)
 	if err != nil {
@@ -121,7 +115,8 @@ func handleVerifyMessage(s *Server, cmd interface{}, closeChan <-chan struct{}) 
 	}
 
 	// Return boolean if addresses match.
-	return address.EncodeAddress() == c.Address, nil
+	return address.EncodeAddress() == c.Address, nil*/
+	return nil, nil
 }
 
 func handleSignMessageWithprivkey(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
