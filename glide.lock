@@ -43,6 +43,8 @@ imports:
   - json/parser
   - json/scanner
   - json/token
+- name: github.com/jessevdk/go-flags
+  version: 1c38ed7ad0cc3d9e66649ac398c30e45f395c4eb
 - name: github.com/magiconair/properties
   version: 2c9e9502788518c97fe44e8955cd069417ee89df
 - name: github.com/mitchellh/mapstructure

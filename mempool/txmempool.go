@@ -755,3 +755,7 @@ func DeserializeInfo(r io.Reader) (*TxMempoolInfo, error) {
 		FeeDelta: int64(FeeDelta),
 	}, nil
 }
+
+func GetTxByHash(hash *utils.Hash) *core.Tx {
+	return nil
+}
