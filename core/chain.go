@@ -177,3 +177,13 @@ func FindMostWorkChain() *BlockIndex {
 	// todo complete
 	return nil
 }
+
+func (chain *Chain) FetchBlockIndexByHeight(height uint32) *BlockIndex {
+	// todo complete
+	return nil
+}
+
+func (chain *Chain) FetchBlockIndexByHash(hash *utils.Hash) *BlockIndex {
+	// todo complete
+	return nil
+}

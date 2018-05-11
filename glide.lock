@@ -43,6 +43,8 @@ imports:
   - json/parser
   - json/scanner
   - json/token
+- name: github.com/jessevdk/go-flags
+  version: 1c38ed7ad0cc3d9e66649ac398c30e45f395c4eb
 - name: github.com/magiconair/properties
   version: 2c9e9502788518c97fe44e8955cd069417ee89df
 - name: github.com/mitchellh/mapstructure
@@ -91,11 +93,11 @@ imports:
   subpackages:
   - reflectutil
 - name: golang.org/x/crypto
-  version: 122d919ec1efcfb58483215da23f815853e24b81
+  version: 2d027ae1dddd4694d54f7a8b6cbe78dca8720226
   subpackages:
   - ripemd160
 - name: golang.org/x/sys
-  version: 78d5f264b493f125018180c204871ecf58a2dce1
+  version: 7dfd1290c7917b7ba22824b9d24954ab3002fe24
   subpackages:
   - unix
 - name: golang.org/x/text

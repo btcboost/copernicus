@@ -7,7 +7,7 @@ import (
 
 const MaxMessagePayload = 1024 * 1024 * 32
 const (
-	Copernicus                    = "0.0.1"
+	Copernicus                    = "0.16.0"
 	BitcoinProtocolVersion uint32 = 70012
 	PeerAddressTimeVersion uint32 = 31402
 	MaxUserAgentLen               = 256
