@@ -31,7 +31,7 @@ var miningHandlers = map[string]commandHandler{
 func handleGetNetWorkhashPS(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	c := cmd.(*btcjson.GetNetworkHashPSCmd)
 
-	lookup := int64(120)
+	lookup := 120
 	height := -1
 	if c.Blocks != nil {
 		lookup = *c.Blocks
@@ -51,17 +51,17 @@ func handleGetNetWorkhashPS(s *Server, cmd interface{}, closeChan <-chan struct{
 	}
 
 	if lookup <= 0 {
-		lookup = int64(block.Height)%msg.ActiveNetParams.DifficultyAdjustmentInterval() + int64(1)
+		lookup = block.Height%int(msg.ActiveNetParams.DifficultyAdjustmentInterval()) + 1
 	}
 
-	if lookup > int64(block.Height) {
-		lookup = int64(block.Height)
+	if lookup > block.Height {
+		lookup = block.Height
 	}
 
 	b := block
 	minTime := b.GetBlockTime()
 	maxTime := minTime
-	for i := 0; i < int(lookup); i++ {
+	for i := 0; i < lookup; i++ {
 		b = b.Prev
 		// time := b.GetBlockTime()
 		//minTime = utils.Min(time, minTime)          TODO
@@ -606,7 +606,6 @@ func handleGetblocktemplate(s *Server, cmd interface{}, closeChan <-chan struct{
 		Code:    btcjson.ErrRPCInvalidParameter,
 		Message: "Invalid mode",
 	}
-	return nil, nil
 }
 
 func handleGetBlockTemplateProposal(request *btcjson.TemplateRequest) (interface{}, error) {

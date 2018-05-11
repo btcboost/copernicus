@@ -761,8 +761,6 @@ func handleStop(s *Server, cmd interface{}, closeChan <-chan struct{}) (interfac
 }
 */
 
-
-
 // Server provides a concurrent safe RPC server to a chain server.
 type Server struct {
 	started      int32
@@ -896,7 +894,6 @@ func (s *Server) decrementClients() {
 	atomic.AddInt32(&s.numClients, -1)
 }
 
-
 func (s *Server) checkAuth(r *http.Request, require bool) (bool, bool, error) {
 	authhdr := r.Header["Authorization"]
 	if len(authhdr) <= 0 {
@@ -938,7 +935,6 @@ type parsedRPCCmd struct {
 	cmd    interface{}
 	err    *btcjson.RPCError
 }
-
 
 func (s *Server) standardCmdResult(cmd *parsedRPCCmd, closeChan <-chan struct{}) (interface{}, error) {
 	handler, ok := rpcHandlers[cmd.method]

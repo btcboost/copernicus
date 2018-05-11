@@ -425,7 +425,7 @@ func handleGetblockheader(s *Server, cmd interface{}, closeChan <-chan struct{})
 	// When the verbose flag is set false
 	if c.Verbose != nil && !*c.Verbose {
 		var headerBuf bytes.Buffer
-		err := blockIndex.BlockHeader.Serialize(&headerBuf)
+		err := blockIndex.Header.Serialize(&headerBuf)
 		if err != nil {
 			context := "Failed to serialize block header"
 			return nil, internalRPCError(err.Error(), context)
@@ -455,14 +455,14 @@ func handleGetblockheader(s *Server, cmd interface{}, closeChan <-chan struct{})
 	blockHeaderReply := btcjson.GetBlockHeaderVerboseResult{
 		Hash:          c.Hash,
 		Confirmations: uint64(confirmations),
-		Height:        blockIndex.Height,
-		Version:       blockIndex.BlockHeader.Version,
-		VersionHex:    fmt.Sprintf("%08x", blockIndex.BlockHeader.Version),
-		MerkleRoot:    blockIndex.BlockHeader.MerkleRoot.ToString(),
-		Time:          blockIndex.BlockHeader.Time,
+		Height:        int32(blockIndex.Height),
+		Version:       blockIndex.Header.Version,
+		VersionHex:    fmt.Sprintf("%08x", blockIndex.Header.Version),
+		MerkleRoot:    blockIndex.Header.MerkleRoot.ToString(),
+		Time:          blockIndex.Header.Time,
 		Mediantime:    blockIndex.GetMedianTimePast(),
-		Nonce:         uint64(blockIndex.BlockHeader.Nonce),
-		Bits:          fmt.Sprintf("%8x", blockIndex.BlockHeader.Bits),
+		Nonce:         uint64(blockIndex.Header.Nonce),
+		Bits:          fmt.Sprintf("%8x", blockIndex.Header.Bits),
 		Difficulty:    getDifficulty(blockIndex),
 		Chainwork:     blockIndex.ChainWork.Text(16),
 		PreviousHash:  previousblockhash,
@@ -690,7 +690,7 @@ func handlePreciousblock(s *Server, cmd interface{}, closeChan <-chan struct{}) 
 	if err != nil {
 		return nil, err
 	}
-	blockIndex := blockchain.GChainActive.FetchBlockIndex(hash)
+	blockIndex := blockchain.GChainActive.FetchBlockIndexByHash(hash)
 	if blockIndex == nil {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCBlockNotFound,

@@ -384,7 +384,7 @@ func NewGetNetTotalsCmd() *GetNetTotalsCmd {
 
 // GetNetworkHashPSCmd defines the getnetworkhashps JSON-RPC command.
 type GetNetworkHashPSCmd struct {
-	Blocks *int64 `jsonrpcdefault:"120"`
+	Blocks *int `jsonrpcdefault:"120"`
 	Height *int `jsonrpcdefault:"-1"`
 }
 
@@ -685,7 +685,7 @@ type SignMessageWithPrivkeyCmd struct {
 	Message string
 }
 
-// NewValidateAddressCmd returns a new instance which can be used to issue a
+// NewSignMessageWithPrivkeyCmd returns a new instance which can be used to issue a
 // validateaddress JSON-RPC command.
 func NewSignMessageWithPrivkeyCmd(privkey string, msg string) *SignMessageWithPrivkeyCmd {
 	return &SignMessageWithPrivkeyCmd{

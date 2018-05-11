@@ -44,7 +44,6 @@ func NewNodeCmd(subCmd NodeSubCmd, target string, connectSubCmd *string) *NodeCm
 	}
 }
 
-
 // GenerateCmd defines the generate JSON-RPC command.
 type GenerateCmd struct {
 	NumBlocks uint32
@@ -96,7 +95,6 @@ func NewGetHeadersCmd(blockLocators []string, hashStop string) *GetHeadersCmd {
 		HashStop:      hashStop,
 	}
 }
-
 
 func init() {
 	// No special flags for commands in this file.

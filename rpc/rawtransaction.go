@@ -69,27 +69,28 @@ func handleGetRawTransaction(s *Server, cmd interface{}, closeChan <-chan struct
 
 // createTxRawResult converts the passed transaction and associated parameters
 // to a raw transaction JSON object.
-func createTxRawResult( tx *core.Tx, hashBlock *utils.Hash, params *msg.BitcoinParams) (*btcjson.TxRawResult, error) {
+func createTxRawResult(tx *core.Tx, hashBlock *utils.Hash, params *msg.BitcoinParams) (*btcjson.TxRawResult, error) {
 
+	hash := tx.TxHash()
 	txReply := &btcjson.TxRawResult{
-		TxID:tx.TxHash().ToString(),
-		Hash:tx.TxHash().ToString(),
-		Size:tx.SerializeSize(),
-		Version:tx.Version,
-		LockTime:tx.LockTime,
-		Vin:createVinList(tx),
-		Vout:createVoutList(tx, params),
+		TxID:     hash.ToString(),
+		Hash:     hash.ToString(),
+		Size:     tx.SerializeSize(),
+		Version:  tx.Version,
+		LockTime: tx.LockTime,
+		Vin:      createVinList(tx),
+		Vout:     createVoutList(tx, params),
 	}
 
 	if !hashBlock.IsNull() {
 		txReply.BlockHash = hashBlock.ToString()
-		bindex := blockchain.GChainActive.FetchBlockIndexByHash(hashBlock)  // todo realise: get *BlockIndex by blockhash
+		bindex := blockchain.GChainActive.FetchBlockIndexByHash(hashBlock) // todo realise: get *BlockIndex by blockhash
 		if bindex != nil {
 			if blockchain.GChainActive.Contains(bindex) {
 				txReply.Confirmations = blockchain.GChainActive.Height() - bindex.Height + 1
 				txReply.Time = bindex.Header.Time
 				txReply.Blocktime = bindex.Header.Time
-			}else{
+			} else {
 				txReply.Confirmations = 0
 			}
 		}
@@ -101,10 +102,10 @@ func createTxRawResult( tx *core.Tx, hashBlock *utils.Hash, params *msg.BitcoinP
 // transaction.
 func createVinList(tx *core.Tx) []btcjson.Vin {
 	vinList := make([]btcjson.Vin, len(tx.Ins))
-	for index, in := range tx.Ins{
+	for index, in := range tx.Ins {
 		if tx.IsCoinBase() {
 			vinList[index].Coinbase = hex.EncodeToString(in.Script.GetScriptByte())
-		}else{
+		} else {
 			vinList[index].Txid = in.PreviousOutPoint.Hash.ToString()
 			vinList[index].Vout = in.PreviousOutPoint.Index
 			vinList[index].ScriptSig.Asm = ScriptToAsmStr(in.Script, true)
@@ -115,7 +116,7 @@ func createVinList(tx *core.Tx) []btcjson.Vin {
 	return vinList
 }
 
-func ScriptToAsmStr(script *core.Script, attemptSighashDecode bool) string {		// todo complete
+func ScriptToAsmStr(script *core.Script, attemptSighashDecode bool) string { // todo complete
 	var str string
 	var opcode byte
 	vch := make([]byte, 0)
@@ -137,7 +138,7 @@ func ScriptToAsmStr(script *core.Script, attemptSighashDecode bool) string {		//
 			} else {
 				// the IsUnspendable check makes sure not to try to decode
 				// OP_RETURN data that may match the format of a signature
-				if attemptSighashDecode && !script.IsUnspendable(){
+				if attemptSighashDecode && !script.IsUnspendable() {
 					var strSigHashDecode string
 					// goal: only attempt to decode a defined sighash type from
 					// data that looks like a signature within a scriptSig. This
@@ -146,20 +147,20 @@ func ScriptToAsmStr(script *core.Script, attemptSighashDecode bool) string {		//
 					// formats (see IsCompressedOrUncompressedPubKey) being
 					// incongruous with the checks in CheckSignatureEncoding.
 					flags := crypto.ScriptVerifyStrictenc
-					if vch[len(vch)-1] &  crypto.SigHashForkID != 0{
+					if vch[len(vch)-1]&crypto.SigHashForkID != 0 {
 						// If the transaction is using SIGHASH_FORKID, we need
 						// to set the apropriate flag.
 						// TODO: Remove after the Hard Fork.
 						flags |= crypto.ScriptEnableSigHashForkID
 					}
-					if ok, _:= crypto.CheckSignatureEncoding(vch, uint32(flags)); ok {
-						chsigHashType := vch[len(vch) - 1]
-						if  t, ok := crypto.MapSigHashTypes[chsigHashType]; ok{		// todo realise define
-							strSigHashDecode = "[" + t + "]"
-							// remove the sighash type byte. it will be replaced
-							// by the decode.
-							vch = vch[:len(vch) - 1]
-						}
+					if ok, _ := crypto.CheckSignatureEncoding(vch, uint32(flags)); ok {
+						//chsigHashType := vch[len(vch)-1]
+						//if t, ok := crypto.MapSigHashTypes[chsigHashType]; ok { // todo realise define
+						//	strSigHashDecode = "[" + t + "]"
+						//	// remove the sighash type byte. it will be replaced
+						//	// by the decode.
+						//	vch = vch[:len(vch)-1]
+						//}
 					}
 
 					str += hex.EncodeToString(vch) + strSigHashDecode
@@ -167,7 +168,7 @@ func ScriptToAsmStr(script *core.Script, attemptSighashDecode bool) string {		//
 					str += hex.EncodeToString(vch)
 				}
 			}
-		}else {
+		} else {
 			str += core.GetOpName(int(opcode))
 		}
 	}
@@ -178,7 +179,7 @@ func ScriptToAsmStr(script *core.Script, attemptSighashDecode bool) string {		//
 // transaction.
 func createVoutList(tx *core.Tx, params *msg.BitcoinParams) []btcjson.Vout {
 	voutList := make([]btcjson.Vout, len(tx.Outs))
-	for index,out := range tx.Outs{
+	for index, out := range tx.Outs {
 		voutList[index].Value = out.Value
 		voutList[index].N = uint32(index)
 		voutList[index].ScriptPubKey = ScriptPubKeyToJSON(out.Script, true)
@@ -187,19 +188,19 @@ func createVoutList(tx *core.Tx, params *msg.BitcoinParams) []btcjson.Vout {
 	return voutList
 }
 
-func ScriptPubKeyToJSON(script *core.Script, includeHex bool) btcjson.ScriptPubKeyResult {  // todo complete
+func ScriptPubKeyToJSON(script *core.Script, includeHex bool) btcjson.ScriptPubKeyResult { // todo complete
 	return btcjson.ScriptPubKeyResult{}
 }
 
 func GetTransaction(hash *utils.Hash, allowSlow bool) (*core.Tx, *utils.Hash, bool) {
-	tx := mempool.GetTx(hash) // todo realize: in mempool get *core.Tx by hash
+	tx := mempool.GetTxByHash(hash) // todo realize: in mempool get *core.Tx by hash
 	if tx != nil {
 		return tx, nil, true
 	}
 
 	if blockchain.GTxIndex {
 		blockchain.GBlockTree.ReadTxIndex(hash)
-		blockchain.OpenBlockFile(, true)
+		//blockchain.OpenBlockFile(, true)
 		// todo complete
 	}
 
@@ -208,16 +209,16 @@ func GetTransaction(hash *utils.Hash, allowSlow bool) (*core.Tx, *utils.Hash, bo
 	if allowSlow {
 		coin := utxo.AccessByTxid(blockchain.GCoinsTip, hash)
 		if !coin.IsSpent() {
-			indexSlow = blockchain.GChainActive.FetchBlockIndexByHeight(coin.GetHeight())   // todo realise : get *BlockIndex by height
+			indexSlow = blockchain.GChainActive.FetchBlockIndexByHeight(coin.GetHeight()) // todo realise : get *BlockIndex by height
 		}
 	}
 
 	if indexSlow != nil {
 		var block *core.Block
 		if blockchain.ReadBlockFromDisk(block, indexSlow, msg.ActiveNetParams) {
-			for _, tx := range block.Txs{
+			for _, tx := range block.Txs {
 				if *hash == tx.TxHash() {
-					return tx, indexSlow.BlockHash, true
+					return tx, &indexSlow.BlockHash, true
 				}
 			}
 		}

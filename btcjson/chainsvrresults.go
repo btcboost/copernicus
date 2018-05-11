@@ -6,7 +6,6 @@ package btcjson
 
 import (
 	"encoding/json"
-	"math/big"
 )
 
 // GetBlockHeaderVerboseResult models the data from the getblockheader command when
@@ -19,12 +18,12 @@ type GetBlockHeaderVerboseResult struct {
 	Version       int32   `json:"version"`
 	VersionHex    string  `json:"versionHex"`
 	MerkleRoot    string  `json:"merkleroot"`
-	Time          int64   `json:"time"`
+	Time          uint32  `json:"time"`
 	Mediantime    int64   `json:"mediantime"`
 	Nonce         uint64  `json:"nonce"`
 	Bits          string  `json:"bits"`
 	Difficulty    float64 `json:"difficulty"`
-	Chainwork     big.Int `josn:"chainwork"`
+	Chainwork     string  `josn:"chainwork"`
 	PreviousHash  string  `json:"previousblockhash,omitempty"`
 	NextHash      string  `json:"nextblockhash,omitempty"`
 }
@@ -87,7 +86,7 @@ type GetAddedNodeInfoResult struct {
 type SoftForkDescription struct {
 	ID      string `json:"id"`
 	Version uint32 `json:"version"`
-	Reject struct {
+	Reject  struct {
 		Status bool `json:"status"`
 	} `json:"reject"`
 }
@@ -487,8 +486,8 @@ type TxRawResult struct {
 	Vout          []Vout `json:"vout"`
 	BlockHash     string `json:"blockhash"`
 	Confirmations int    `json:"confirmations"`
-	Time          int64  `json:"time"`
-	Blocktime     int64  `json:"blocktime"`
+	Time          uint32 `json:"time"`
+	Blocktime     uint32 `json:"blocktime"`
 }
 
 // SearchRawTransactionsResult models the data from the searchrawtransaction
