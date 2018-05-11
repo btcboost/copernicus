@@ -475,6 +475,32 @@ func handleGetchaintips(s *Server, cmd interface{}, closeChan <-chan struct{}) (
 	return nil, nil
 }
 
+func getDifficulty(bi *core.BlockIndex) float64 {
+	if bi == nil {
+		return 1.0
+	}
+	return getDifficultyFromBits(bi.GetBlockHeader().Bits)
+}
+
+// getDifficultyRatio returns the proof-of-work difficulty as a multiple of the
+// minimum difficulty using the passed bits field from the header of a block.
+func getDifficultyFromBits(bits uint32) float64 {
+	shift := bits >> 24 & 0xff
+	diff := 0x0000ffff / float64(bits&0x00ffffff)
+
+	for shift < 29 {
+		diff *= 256
+		shift++
+	}
+
+	for shift > 29 {
+		diff /= 256
+		shift--
+	}
+
+	return diff
+}
+
 func handleGetdifficulty(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	best := blockchain.GChainActive.Tip()
 	return getDifficulty(best), nil

@@ -1,12 +1,18 @@
 package rpc
 
 import (
+	"fmt"
+	"bytes"
+	"encoding/hex"
+	"math/big"
+
 	"github.com/btcboost/copernicus/btcjson"
 	"github.com/btcboost/copernicus/blockchain"
 	"github.com/btcboost/copernicus/net/msg"
-	"math/big"
+	"github.com/btcboost/copernicus/core"
 	"github.com/btcboost/copernicus/mining"
 	"github.com/btcboost/copernicus/utils"
+	"github.com/astaxie/beego/logs"
 )
 
 var miningHandlers = map[string]commandHandler{
@@ -14,7 +20,7 @@ var miningHandlers = map[string]commandHandler{
 	"getmininginfo":         handleGetMiningInfo,
 	"prioritisetransaction": handlePrioritisetransaction,
 	"getblocktemplate":      handleGetblocktemplate,
-	"submitblock":           handleSubmitblock,
+	"submitblock":           handleSubmitBlock,
 	"generate":              handleGenerate,
 	"generatetoaddress":     handleGeneratetoaddress,
 	"estimatefee":           handleEstimatefee,
@@ -608,38 +614,39 @@ func handleGetblocktemplate(s *Server, cmd interface{}, closeChan <-chan struct{
 }
 
 // handleSubmitBlock implements the submitblock command.
-func handleSubmitblock(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	/*
-		c := cmd.(*btcjson.SubmitBlockCmd)
+func handleSubmitBlock(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 
-		// Deserialize the submitted block.
-		hexStr := c.HexBlock
-		if len(hexStr)%2 != 0 {
-			hexStr = "0" + c.HexBlock
-		}
-		serializedBlock, err := hex.DecodeString(hexStr)
-		if err != nil {
-			return nil, rpcDecodeHexError(hexStr)
-		}
+	c := cmd.(*btcjson.SubmitBlockCmd)
 
-		block, err := btcutil.NewBlockFromBytes(serializedBlock)
-		if err != nil {
-			return nil, &btcjson.RPCError{
-				Code:    btcjson.ErrRPCDeserialization,
-				Message: "Block decode failed: " + err.Error(),
-			}
-		}
+	// Deserialize the submitted block.
+	hexStr := c.HexBlock
+	if len(hexStr)%2 != 0 {
+		hexStr = "0" + c.HexBlock
+	}
+	serializedBlock, err := hex.DecodeString(hexStr)
+	if err != nil {
+		return nil, rpcDecodeHexError(hexStr)
+	}
 
-		// Process this block using the same rules as blocks coming from other
-		// nodes.  This will in turn relay it to the network like normal.
-		_, err = s.cfg.SyncMgr.SubmitBlock(block, blockchain.BFNone)
-		if err != nil {
-			return fmt.Sprintf("rejected: %s", err.Error()), nil
-		}
+	block := &core.Block{}
+	err = block.Deserialize(bytes.NewBuffer(serializedBlock))
 
-		logs.Info("Accepted block %s via submitblock", block.Hash())
-		return nil, nil
-	*/
+	if err != nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCDeserialization,
+			Message: "Block decode failed: " + err.Error(),
+		}
+	}
+
+	// Process this block using the same rules as blocks coming from other
+	// nodes.  This will in turn relay it to the network like normal.
+	//_, err = s.cfg.SyncMgr.SubmitBlock(block, blockchain.BFNone)       // TODO
+	if err != nil {
+		return fmt.Sprintf("rejected: %s", err.Error()), nil
+	}
+
+	logs.Info("Accepted block %s via submitblock", block.Hash)
+
 	return nil, nil
 }
 
@@ -720,7 +727,7 @@ func handleEstimatesmartpriority(s *Server, cmd interface{}, closeChan <-chan st
 }
 
 func registerMiningRPCCommands() {
-	for name, handler := range abcHandlers {
+	for name, handler := range miningHandlers {
 		appendCommand(name, handler)
 	}
 }
