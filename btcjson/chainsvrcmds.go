@@ -21,7 +21,6 @@ const (
 	// peer.
 	ANAdd AddNodeSubCmd = "add"
 
-	// ANRemove indicates the specified peer should be removed.
 	ANRemove AddNodeSubCmd = "remove"
 
 	// ANOneTry indicates the specified host should try to connect once,
@@ -422,6 +421,19 @@ type GetRawMempoolCmd struct {
 func NewGetRawMempoolCmd(verbose *bool) *GetRawMempoolCmd {
 	return &GetRawMempoolCmd{
 		Verbose: verbose,
+	}
+}
+
+// EstimatefeeCmd defines the getmempool JSON-RPC command.
+type EstimatefeeCmd struct {
+	Nblocks *int
+}
+
+// NewEstimatefeeCmd returns a new instance which can be used to issue a
+// estimatefee JSON-RPC command.
+func NewEstimatefeeCmd(nblocks *int) *EstimatefeeCmd {
+	return &EstimatefeeCmd{
+		Nblocks: nblocks,
 	}
 }
 
