@@ -93,11 +93,11 @@ imports:
   subpackages:
   - reflectutil
 - name: golang.org/x/crypto
-  version: 2d027ae1dddd4694d54f7a8b6cbe78dca8720226
+  version: 122d919ec1efcfb58483215da23f815853e24b81
   subpackages:
   - ripemd160
 - name: golang.org/x/sys
-  version: 7dfd1290c7917b7ba22824b9d24954ab3002fe24
+  version: 78d5f264b493f125018180c204871ecf58a2dce1
   subpackages:
   - unix
 - name: golang.org/x/text
