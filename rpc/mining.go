@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"strconv"
+	"time"
 
 	"github.com/astaxie/beego/logs"
 	"github.com/btcboost/copernicus/blockchain"
@@ -13,6 +15,8 @@ import (
 	"github.com/btcboost/copernicus/mining"
 	"github.com/btcboost/copernicus/net/msg"
 	"github.com/btcboost/copernicus/utils"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 )
 
 var miningHandlers = map[string]commandHandler{
@@ -113,94 +117,6 @@ func handleGetMiningInfo(s *Server, cmd interface{}, closeChan <-chan struct{}) 
 func handlePrioritisetransaction(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
-
-// handleGetBlockTemplateRequest is a helper for handleGetBlockTemplate which
-// deals with generating and returning block templates to the caller.  It
-// handles both long poll requests as specified by BIP 0022 as well as regular
-// requests.  In addition, it detects the capabilities reported by the caller
-// in regards to whether or not it supports creating its own coinbase (the
-// coinbasetxn and coinbasevalue capabilities) and modifies the returned block
-// template accordingly.
-/*
-func handleGetBlockTemplateRequest(s *Server, request *btcjson.TemplateRequest, closeChan <-chan struct{}) (interface{}, error) {
-	// Extract the relevant passed capabilities and restrict the result to
-	// either a coinbase value or a coinbase transaction object depending on
-	// the request.  Default to only providing a coinbase value.
-	useCoinbaseValue := true
-	if request != nil {
-		var hasCoinbaseValue, hasCoinbaseTxn bool
-		for _, capability := range request.Capabilities {
-			switch capability {
-			case "coinbasetxn":
-				hasCoinbaseTxn = true
-			case "coinbasevalue":
-				hasCoinbaseValue = true
-			}
-		}
-
-		if hasCoinbaseTxn && !hasCoinbaseValue {
-			useCoinbaseValue = false
-		}
-	}
-
-	// When a coinbase transaction has been requested, respond with an error
-	// if there are no addresses to pay the created block template to.
-	if !useCoinbaseValue && len(cfg.miningAddrs) == 0 {
-		return nil, &btcjson.RPCError{
-			Code: btcjson.ErrRPCInternal.Code,
-			Message: "A coinbase transaction has been requested, " +
-				"but the server has not been configured with " +
-				"any payment addresses via --miningaddr",
-		}
-	}
-
-	// Return an error if there are no peers connected since there is no
-	// way to relay a found block or receive transactions to work on.
-	// However, allow this state when running in the regression test or
-	// simulation test mode.
-	if !(cfg.RegressionTest || cfg.SimNet) &&
-		s.cfg.ConnMgr.ConnectedCount() == 0 {
-
-		return nil, &btcjson.RPCError{
-			Code:    btcjson.ErrRPCClientNotConnected,
-			Message: "Bitcoin is not connected",
-		}
-	}
-
-	// No point in generating or accepting work before the chain is synced.
-	currentHeight := s.cfg.Chain.BestSnapshot().Height
-	if currentHeight != 0 && !s.cfg.SyncMgr.IsCurrent() {
-		return nil, &btcjson.RPCError{
-			Code:    btcjson.ErrRPCClientInInitialDownload,
-			Message: "Bitcoin is downloading blocks...",
-		}
-	}
-
-	// When a long poll ID was provided, this is a long poll request by the
-	// client to be notified when block template referenced by the ID should
-	// be replaced with a new one.
-	if request != nil && request.LongPollID != "" {
-		return handleGetBlockTemplateLongPoll(s, request.LongPollID,
-			useCoinbaseValue, closeChan)
-	}
-
-	// Protect concurrent access when updating block templates.
-	state := s.gbtWorkState
-	state.Lock()
-	defer state.Unlock()
-
-	// Get and return a block template.  A new block template will be
-	// generated when the current best block has changed or the transactions
-	// in the memory pool have been updated and it has been at least five
-	// seconds since the last template was generated.  Otherwise, the
-	// timestamp for the existing block template is updated (and possibly
-	// the difficulty on testnet per the consesus rules).
-	if err := state.updateBlockTemplate(s, useCoinbaseValue); err != nil {
-		return nil, err
-	}
-	return state.blockTemplateResult(useCoinbaseValue, nil)
-}
-*/
 
 // updateBlockTemplate creates or updates a block template for the work state.
 // A new block template will be generated when the current best block has
@@ -584,6 +500,14 @@ func handleGetBlockTemplateLongPoll(s *Server, longPollID string, useCoinbaseVal
 }
 */
 
+// global variable in package rpc
+var (
+	transactionsUpdatedLast uint64
+	indexPrev               *core.BlockIndex
+	start                   int64
+	blocktemplate           *mining.BlockTemplate
+)
+
 func handleGetblocktemplate(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	// See https://en.bitcoin.it/wiki/BIP_0022 and
 	// https://en.bitcoin.it/wiki/BIP_0023 for more details.
@@ -598,7 +522,7 @@ func handleGetblocktemplate(s *Server, cmd interface{}, closeChan <-chan struct{
 
 	switch mode {
 	case "template":
-		// return handleGetBlockTemplateRequest(request, closeChan)
+		return handleGetBlockTemplateRequest(request, closeChan)
 	case "proposal":
 		return handleGetBlockTemplateProposal(request)
 	}
@@ -607,6 +531,363 @@ func handleGetblocktemplate(s *Server, cmd interface{}, closeChan <-chan struct{
 		Code:    btcjson.ErrRPCInvalidParameter,
 		Message: "Invalid mode",
 	}
+}
+
+func handleGetBlockTemplateRequest(request *btcjson.TemplateRequest, closeChan <-chan struct{}) (interface{}, error) {
+	// todo handle connMan exception
+	if blockchain.IsInitialBlockDownload() {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCClientInInitialDownload,
+			Message: "Bitcoin is downloading blocks...",
+		}
+	}
+
+	if request.LongPollID != "" {
+		// Wait to respond until either the best block changes, OR a minute has
+		// passed and there are more transactions
+		//var hashWatchedChain utils.Hash
+		//checktxtime := time.Now()
+		//transactionsUpdatedLastLP := 0
+		// todo complete
+	}
+
+	if indexPrev != core.ActiveChain.Tip() ||
+		blockchain.GMemPool.TransactionsUpdated != transactionsUpdatedLast &&
+			utils.GetMockTime()-start > 5 {
+
+		// Clear pindexPrev so future calls make a new block, despite any
+		// failures from here on
+		indexPrev = nil
+		// Store the pindexBest used before CreateNewBlock, to avoid races
+		transactionsUpdatedLast = blockchain.GMemPool.TransactionsUpdated
+		indexPrevNew := blockchain.GChainActive.Tip()
+		start = utils.GetMockTime()
+
+		// Create new block
+		scriptDummy := core.Script{}
+		scriptDummy.PushOpCode(core.OP_TRUE)
+		ba :=
+	}
+
+	// Extract the relevant passed capabilities and restrict the result to
+	// either a coinbase value or a coinbase transaction object depending on
+	// the request.  Default to only providing a coinbase value.
+	/*
+		useCoinbaseValue := true
+		if request != nil {
+			var hasCoinbaseValue, hasCoinbaseTxn bool
+			for _, capability := range request.Capabilities {
+				switch capability {
+				case "coinbasetxn":
+					hasCoinbaseTxn = true
+				case "coinbasevalue":
+					hasCoinbaseValue = true
+				}
+			}
+
+			if hasCoinbaseTxn && !hasCoinbaseValue {
+				useCoinbaseValue = false
+			}
+		}
+
+		// When a coinbase transaction has been requested, respond with an error
+		// if there are no addresses to pay the created block template to.
+		if !useCoinbaseValue && len(cfg.miningAddrs) == 0 {
+			return nil, &btcjson.RPCError{
+				Code: btcjson.ErrRPCInternal.Code,
+				Message: "A coinbase transaction has been requested, " +
+					"but the server has not been configured with " +
+					"any payment addresses via --miningaddr",
+			}
+		}
+
+		// Return an error if there are no peers connected since there is no
+		// way to relay a found block or receive transactions to work on.
+		// However, allow this state when running in the regression test or
+		// simulation test mode.
+		if !(cfg.RegressionTest || cfg.SimNet) &&
+			s.cfg.ConnMgr.ConnectedCount() == 0 {
+
+			return nil, &btcjson.RPCError{
+				Code:    btcjson.ErrRPCClientNotConnected,
+				Message: "Bitcoin is not connected",
+			}
+		}
+
+		// No point in generating or accepting work before the chain is synced.
+		currentHeight := s.cfg.Chain.BestSnapshot().Height
+		if currentHeight != 0 && !s.cfg.SyncMgr.IsCurrent() {
+			return nil, &btcjson.RPCError{
+				Code:    btcjson.ErrRPCClientInInitialDownload,
+				Message: "Bitcoin is downloading blocks...",
+			}
+		}
+
+		// When a long poll ID was provided, this is a long poll request by the
+		// client to be notified when block template referenced by the ID should
+		// be replaced with a new one.
+		if request != nil && request.LongPollID != "" {
+			return handleGetBlockTemplateLongPoll(s, request.LongPollID,
+				useCoinbaseValue, closeChan)
+		}
+
+		// Protect concurrent access when updating block templates.
+		state := s.gbtWorkState
+		state.Lock()
+		defer state.Unlock()
+
+		// Get and return a block template.  A new block template will be
+		// generated when the current best block has changed or the transactions
+		// in the memory pool have been updated and it has been at least five
+		// seconds since the last template was generated.  Otherwise, the
+		// timestamp for the existing block template is updated (and possibly
+		// the difficulty on testnet per the consesus rules).
+		if err := state.updateBlockTemplate(s, useCoinbaseValue); err != nil {
+			return nil, err
+		}
+		return state.blockTemplateResult(useCoinbaseValue, nil)
+	*/
+}
+
+// blockTemplateResult returns the current block template associated with the
+// state as a btcjson.GetBlockTemplateResult that is ready to be encoded to JSON
+// and returned to the caller.
+//
+// This function MUST be called with the state locked.
+func (state *gbtWorkState) blockTemplateResult(useCoinbaseValue bool, submitOld *bool) (*btcjson.GetBlockTemplateResult, error) {
+	// Ensure the timestamps are still in valid range for the template.
+	// This should really only ever happen if the local clock is changed
+	// after the template is generated, but it's important to avoid serving
+	// invalid block templates.
+	template := state.template
+	msgBlock := template.Block
+	header := &msgBlock.Header
+	adjustedTime := state.timeSource.AdjustedTime()
+	maxTime := adjustedTime.Add(time.Second * blockchain.MaxTimeOffsetSeconds)
+	if header.Timestamp.After(maxTime) {
+		return nil, &btcjson.RPCError{
+			Code: btcjson.ErrRPCOutOfRange,
+			Message: fmt.Sprintf("The template time is after the "+
+				"maximum allowed time for a block - template "+
+				"time %v, maximum time %v", adjustedTime,
+				maxTime),
+		}
+	}
+
+	// Convert each transaction in the block template to a template result
+	// transaction.  The result does not include the coinbase, so notice
+	// the adjustments to the various lengths and indices.
+	numTx := len(msgBlock.Transactions)
+	transactions := make([]btcjson.GetBlockTemplateResultTx, 0, numTx-1)
+	txIndex := make(map[utils.Hash]int64, numTx)
+	for i, tx := range msgBlock.Transactions {
+		txHash := tx.TxHash()
+		txIndex[txHash] = int64(i)
+
+		// Skip the coinbase transaction.
+		if i == 0 {
+			continue
+		}
+
+		// Create an array of 1-based indices to transactions that come
+		// before this one in the transactions list which this one
+		// depends on.  This is necessary since the created block must
+		// ensure proper ordering of the dependencies.  A map is used
+		// before creating the final array to prevent duplicate entries
+		// when multiple inputs reference the same transaction.
+		dependsMap := make(map[int64]struct{})
+		for _, txIn := range tx.TxIn {
+			if idx, ok := txIndex[txIn.PreviousOutPoint.Hash]; ok {
+				dependsMap[idx] = struct{}{}
+			}
+		}
+		depends := make([]int64, 0, len(dependsMap))
+		for idx := range dependsMap {
+			depends = append(depends, idx)
+		}
+
+		// Serialize the transaction for later conversion to hex.
+		txBuf := bytes.NewBuffer(make([]byte, 0, tx.SerializeSize()))
+		if err := tx.Serialize(txBuf); err != nil {
+			context := "Failed to serialize transaction"
+			return nil, internalRPCError(err.Error(), context)
+		}
+
+		bTx := btcutil.NewTx(tx)
+		resultTx := btcjson.GetBlockTemplateResultTx{
+			Data:    hex.EncodeToString(txBuf.Bytes()),
+			Hash:    txHash.String(),
+			Depends: depends,
+			Fee:     template.Fees[i],
+			SigOps:  template.SigOpCosts[i],
+			Weight:  blockchain.GetTransactionWeight(bTx),
+		}
+		transactions = append(transactions, resultTx)
+	}
+
+	// Generate the block template reply.  Note that following mutations are
+	// implied by the included or omission of fields:
+	//  Including MinTime -> time/decrement
+	//  Omitting CoinbaseTxn -> coinbase, generation
+	targetDifficulty := fmt.Sprintf("%064x", blockchain.CompactToBig(header.Bits))
+	templateID := encodeTemplateID(state.prevHash, state.lastGenerated)
+	reply := btcjson.GetBlockTemplateResult{
+		Bits:         strconv.FormatInt(int64(header.Bits), 16),
+		CurTime:      header.Timestamp.Unix(),
+		Height:       int64(template.Height),
+		PreviousHash: header.PrevBlock.String(),
+		WeightLimit:  blockchain.MaxBlockWeight,
+		SigOpLimit:   blockchain.MaxBlockSigOpsCost,
+		SizeLimit:    wire.MaxBlockPayload,
+		Transactions: transactions,
+		Version:      header.Version,
+		LongPollID:   templateID,
+		SubmitOld:    submitOld,
+		Target:       targetDifficulty,
+		MinTime:      state.minTimestamp.Unix(),
+		MaxTime:      maxTime.Unix(),
+		Mutable:      gbtMutableFields,
+		NonceRange:   gbtNonceRange,
+		Capabilities: gbtCapabilities,
+	}
+	// If the generated block template includes transactions with witness
+	// data, then include the witness commitment in the GBT result.
+	if template.WitnessCommitment != nil {
+		reply.DefaultWitnessCommitment = hex.EncodeToString(template.WitnessCommitment)
+	}
+
+	if useCoinbaseValue {
+		reply.CoinbaseAux = gbtCoinbaseAux
+		reply.CoinbaseValue = &msgBlock.Transactions[0].TxOut[0].Value
+	} else {
+		// Ensure the template has a valid payment address associated
+		// with it when a full coinbase is requested.
+		if !template.ValidPayAddress {
+			return nil, &btcjson.RPCError{
+				Code: btcjson.ErrRPCInternal.Code,
+				Message: "A coinbase transaction has been " +
+					"requested, but the server has not " +
+					"been configured with any payment " +
+					"addresses via --miningaddr",
+			}
+		}
+
+		// Serialize the transaction for conversion to hex.
+		tx := msgBlock.Transactions[0]
+		txBuf := bytes.NewBuffer(make([]byte, 0, tx.SerializeSize()))
+		if err := tx.Serialize(txBuf); err != nil {
+			context := "Failed to serialize transaction"
+			return nil, internalRPCError(err.Error(), context)
+		}
+
+		resultTx := btcjson.GetBlockTemplateResultTx{
+			Data:    hex.EncodeToString(txBuf.Bytes()),
+			Hash:    tx.TxHash().String(),
+			Depends: []int64{},
+			Fee:     template.Fees[0],
+			SigOps:  template.SigOpCosts[0],
+		}
+
+		reply.CoinbaseTxn = &resultTx
+	}
+
+	return &reply, nil
+}
+
+// handleGetBlockTemplateLongPoll is a helper for handleGetBlockTemplateRequest
+// which deals with handling long polling for block templates.  When a caller
+// sends a request with a long poll ID that was previously returned, a response
+// is not sent until the caller should stop working on the previous block
+// template in favor of the new one.  In particular, this is the case when the
+// old block template is no longer valid due to a solution already being found
+// and added to the block chain, or new transactions have shown up and some time
+// has passed without finding a solution.
+//
+// See https://en.bitcoin.it/wiki/BIP_0022 for more details.
+func handleGetBlockTemplateLongPoll(s *rpcServer, longPollID string, useCoinbaseValue bool, closeChan <-chan struct{}) (interface{}, error) {
+	state := s.gbtWorkState
+	state.Lock()
+	// The state unlock is intentionally not deferred here since it needs to
+	// be manually unlocked before waiting for a notification about block
+	// template changes.
+
+	if err := state.updateBlockTemplate(s, useCoinbaseValue); err != nil {
+		state.Unlock()
+		return nil, err
+	}
+
+	// Just return the current block template if the long poll ID provided by
+	// the caller is invalid.
+	prevHash, lastGenerated, err := decodeTemplateID(longPollID)
+	if err != nil {
+		result, err := state.blockTemplateResult(useCoinbaseValue, nil)
+		if err != nil {
+			state.Unlock()
+			return nil, err
+		}
+
+		state.Unlock()
+		return result, nil
+	}
+
+	// Return the block template now if the specific block template
+	// identified by the long poll ID no longer matches the current block
+	// template as this means the provided template is stale.
+	prevTemplateHash := &state.template.Block.Header.PrevBlock
+	if !prevHash.IsEqual(prevTemplateHash) ||
+		lastGenerated != state.lastGenerated.Unix() {
+
+		// Include whether or not it is valid to submit work against the
+		// old block template depending on whether or not a solution has
+		// already been found and added to the block chain.
+		submitOld := prevHash.IsEqual(prevTemplateHash)
+		result, err := state.blockTemplateResult(useCoinbaseValue,
+			&submitOld)
+		if err != nil {
+			state.Unlock()
+			return nil, err
+		}
+
+		state.Unlock()
+		return result, nil
+	}
+
+	// Register the previous hash and last generated time for notifications
+	// Get a channel that will be notified when the template associated with
+	// the provided ID is stale and a new block template should be returned to
+	// the caller.
+	longPollChan := state.templateUpdateChan(prevHash, lastGenerated)
+	state.Unlock()
+
+	select {
+	// When the client closes before it's time to send a reply, just return
+	// now so the goroutine doesn't hang around.
+	case <-closeChan:
+		return nil, ErrClientQuit
+
+		// Wait until signal received to send the reply.
+	case <-longPollChan:
+		// Fallthrough
+	}
+
+	// Get the lastest block template
+	state.Lock()
+	defer state.Unlock()
+
+	if err := state.updateBlockTemplate(s, useCoinbaseValue); err != nil {
+		return nil, err
+	}
+
+	// Include whether or not it is valid to submit work against the old
+	// block template depending on whether or not a solution has already
+	// been found and added to the block chain.
+	submitOld := prevHash.IsEqual(&state.template.Block.Header.PrevBlock)
+	result, err := state.blockTemplateResult(useCoinbaseValue, &submitOld)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func handleGetBlockTemplateProposal(request *btcjson.TemplateRequest) (interface{}, error) {

@@ -57,7 +57,7 @@ type TxMempool struct {
 	// sum of all mempool tx's size.
 	totalTxSize uint64
 	//transactionsUpdated mempool update transaction total number when create mempool late.
-	transactionsUpdated uint64
+	TransactionsUpdated uint64
 }
 
 func (m *TxMempool) GetCacheUsage() int64 {
