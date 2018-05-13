@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -78,15 +77,6 @@ var (
 		Message: "This implementation does not implement wallet commands",
 	}
 )
-
-type commandHandler func(*Server, interface{}, <-chan struct{}) (interface{}, error)
-
-// rpcHandlers maps RPC command strings to appropriate handler functions.
-// This is set by init because help references rpcHandlers and thus causes
-// a dependency loop.
-var rpcHandlers map[string]commandHandler
-
-var mapCommands = map[string]commandHandler{}
 
 // internalRPCError is a convenience function to convert an internal error to
 // an RPC error with the appropriate code set.  It also logs the error to the
@@ -916,26 +906,4 @@ func NewServer(config *ServerConfig) (*Server, error) {
 	//rpc.cfg.Chain.Subscribe(rpc.handleBlockchainNotification)  // todo open
 
 	return &rpc, nil
-}
-
-func appendCommand(name string, cmd commandHandler) bool {
-	if _, ok := mapCommands[name]; ok {
-		return false
-	}
-	mapCommands[name] = cmd
-	return true
-}
-
-func registerAllRPCCommands() {
-	registerABCRPCCommands()
-	registerBlockchainRPCCommands()
-	registerMiningRPCCommands()
-	registerMiscRPCCommands()
-	registerNetRPCCommands()
-	registeRawTransactionRPCCommands()
-}
-
-func init() {
-	registerAllRPCCommands()
-	rand.Seed(time.Now().UnixNano())
 }

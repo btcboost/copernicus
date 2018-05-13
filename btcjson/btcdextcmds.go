@@ -47,6 +47,7 @@ func NewNodeCmd(subCmd NodeSubCmd, target string, connectSubCmd *string) *NodeCm
 // GenerateCmd defines the generate JSON-RPC command.
 type GenerateCmd struct {
 	NumBlocks uint32
+	MaxTries  uint64
 }
 
 // NewGenerateCmd returns a new instance which can be used to issue a generate

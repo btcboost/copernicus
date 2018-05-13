@@ -110,6 +110,7 @@ func handleGetMiningInfo(s *Server, cmd interface{}, closeChan <-chan struct{}) 
 	return &result, nil
 }
 
+// priority transaction currently disabled
 func handlePrioritisetransaction(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
@@ -746,58 +747,41 @@ func handleSubmitBlock(s *Server, cmd interface{}, closeChan <-chan struct{}) (i
 }
 
 func handleGenerate(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	/*
-		// Respond with an error if there are no addresses to pay the
-		// created blocks to.
-		if len(cfg.miningAddrs) == 0 {
-			return nil, &btcjson.RPCError{
-				Code: btcjson.ErrRPCInternal.Code,
-				Message: "No payment addresses specified " +
-					"via --miningaddr",
-			}
+	//c := cmd.(*btcjson.GenerateCmd)
+	//
+	//var maxTries uint64
+	//maxTries = 1000000
+	//if c.MaxTries != 0 {
+	//	maxTries = c.MaxTries
+	//}
+
+	//core.Script{}
+/*	// Respond with an error if the client is requesting 0 blocks to be generated.
+	if c.NumBlocks == 0 {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInternal.Code,
+			Message: "Please request a nonzero number of blocks to generate.",
 		}
+	}
 
-		// Respond with an error if there's virtually 0 chance of mining a block
-		// with the CPU.
-		if !s.cfg.ChainParams.GenerateSupported {
-			return nil, &btcjson.RPCError{
-				Code: btcjson.ErrRPCDifficulty,
-				Message: fmt.Sprintf("No support for `generate` on "+
-					"the current network, %s, as it's unlikely to "+
-					"be possible to mine a block with the CPU.",
-					s.cfg.ChainParams.Net),
-			}
+	// Create a reply
+	reply := make([]string, c.NumBlocks)
+
+	blockHashes, err := s.cfg.CPUMiner.GenerateNBlocks(c.NumBlocks)
+	if err != nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInternal.Code,
+			Message: err.Error(),
 		}
+	}
 
-		c := cmd.(*btcjson.GenerateCmd)
+	// Mine the correct number of blocks, assigning the hex representation of the
+	// hash of each one to its place in the reply.
+	for i, hash := range blockHashes {
+		reply[i] = hash.String()
+	}
 
-		// Respond with an error if the client is requesting 0 blocks to be generated.
-		if c.NumBlocks == 0 {
-			return nil, &btcjson.RPCError{
-				Code:    btcjson.ErrRPCInternal.Code,
-				Message: "Please request a nonzero number of blocks to generate.",
-			}
-		}
-
-		// Create a reply
-		reply := make([]string, c.NumBlocks)
-
-		blockHashes, err := s.cfg.CPUMiner.GenerateNBlocks(c.NumBlocks)
-		if err != nil {
-			return nil, &btcjson.RPCError{
-				Code:    btcjson.ErrRPCInternal.Code,
-				Message: err.Error(),
-			}
-		}
-
-		// Mine the correct number of blocks, assigning the hex representation of the
-		// hash of each one to its place in the reply.
-		for i, hash := range blockHashes {
-			reply[i] = hash.String()
-		}
-
-		return reply, nil
-	*/
+	return reply, nil*/
 	return nil, nil
 }
 
