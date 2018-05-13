@@ -82,3 +82,8 @@ const (
 	ErrRPCNoWallet      RPCErrorCode = -1
 	ErrRPCUnimplemented RPCErrorCode = -1
 )
+
+const (
+	ErrUnDefined        RPCErrorCode = 404
+	ErrInvalidParameter RPCErrorCode = -30
+)

@@ -213,6 +213,9 @@ type TemplateRequest struct {
 	// "proposal".
 	Data   string `json:"data,omitempty"`
 	WorkID string `json:"workid,omitempty"`
+
+	// BCH
+	Rules []string `json:"rules"`
 }
 
 // convertTemplateRequestField potentially converts the provided value as

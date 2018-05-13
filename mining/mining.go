@@ -60,7 +60,7 @@ type BlockAssembler struct {
 	blockTx               uint64
 	blockSigOps           uint64
 	fees                  utils.Amount
-	inBlock               map[utils.Hash]struct{} // todo modify key to value pattern instead of pointer pattern
+	inBlock               map[utils.Hash]struct{}
 	height                int
 	lockTimeCutoff        int64
 	chainParams           *msg.BitcoinParams
@@ -295,7 +295,7 @@ func (ba *BlockAssembler) CreateNewBlock() *BlockTemplate {
 	} else {
 		ba.bt.Block.BlockHeader.HashPrevBlock = *indexPrev.GetBlockHash()
 	}
-	//ba.bt.Block.UpdateTime(indexPrev) // todo fix
+	ba.bt.Block.UpdateTime(indexPrev) // todo fix
 	pow := blockchain.Pow{}
 	ba.bt.Block.BlockHeader.Bits = pow.GetNextWorkRequired(indexPrev, &ba.bt.Block.BlockHeader, ba.chainParams)
 	ba.bt.Block.BlockHeader.Nonce = 0
