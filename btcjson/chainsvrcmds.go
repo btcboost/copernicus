@@ -164,14 +164,14 @@ func NewGetBlockCountCmd() *GetBlockCountCmd {
 
 // GetBlockHashCmd defines the getblockhash JSON-RPC command.
 type GetBlockHashCmd struct {
-	Index int64
+	Height int
 }
 
 // NewGetBlockHashCmd returns a new instance which can be used to issue a
 // getblockhash JSON-RPC command.
-func NewGetBlockHashCmd(index int64) *GetBlockHashCmd {
+func NewGetBlockHashCmd(index int) *GetBlockHashCmd {
 	return &GetBlockHashCmd{
-		Index: index,
+		Height: index,
 	}
 }
 
@@ -424,19 +424,6 @@ type GetRawMempoolCmd struct {
 func NewGetRawMempoolCmd(verbose *bool) *GetRawMempoolCmd {
 	return &GetRawMempoolCmd{
 		Verbose: verbose,
-	}
-}
-
-// EstimatefeeCmd defines the getmempool JSON-RPC command.
-type EstimatefeeCmd struct {
-	Nblocks *int
-}
-
-// NewEstimatefeeCmd returns a new instance which can be used to issue a
-// estimatefee JSON-RPC command.
-func NewEstimatefeeCmd(nblocks *int) *EstimatefeeCmd {
-	return &EstimatefeeCmd{
-		Nblocks: nblocks,
 	}
 }
 
@@ -769,6 +756,21 @@ func NewVerifyTxOutProofCmd(proof string) *VerifyTxOutProofCmd {
 		Proof: proof,
 	}
 }
+
+
+// PruneBlockChainCmd defines the pruneblockchain JSON-RPC command.
+type PruneBlockChainCmd struct {
+	Height *int
+}
+
+// NewPruneBlockChainCmd returns a new instance which can be used to issue a
+// pruneblockchain JSON-RPC command.
+func NewPruneBlockChainCmd(height *int) *PruneBlockChainCmd {
+	return &PruneBlockChainCmd{
+		Height: height,
+	}
+}
+
 
 func init() {
 	// No special flags for commands in this file.
