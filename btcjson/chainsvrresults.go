@@ -202,8 +202,11 @@ type GetMempoolEntryResult struct {
 // GetMempoolInfoResult models the data returned from the getmempoolinfo
 // command.
 type GetMempoolInfoResult struct {
-	Size  int64 `json:"size"`
-	Bytes int64 `json:"bytes"`
+	Size          int     `json:"size"`
+	Bytes         uint64  `json:"bytes"`
+	Usage         int64   `json:"usage"`
+	MaxMempool    int64   `json:"maxmempool"`
+	MempoolMinFee float64 `json:"mempoolminfee"`
 }
 
 // NetworksResult models the networks data from the getnetworkinfo command.

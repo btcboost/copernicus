@@ -9,6 +9,7 @@ import (
 	"github.com/btcboost/copernicus/btcjson"
 	"github.com/btcboost/copernicus/core"
 	"github.com/btcboost/copernicus/net/msg"
+	"github.com/btcboost/copernicus/policy"
 	"github.com/btcboost/copernicus/utils"
 	"github.com/pkg/errors"
 )
@@ -24,7 +25,7 @@ var blockchainHandlers = map[string]commandHandler{
 	"getdifficulty":         handleGetDifficulty, //complete
 	"getmempoolancestors":   handleGetMempoolAncestors,
 	"getmempooldescendants": handleGetMempoolDescendants,
-	"getmempoolinfo":        handleGetMempoolInfo,
+	"getmempoolinfo":        handleGetMempoolInfo, // complete
 	"getrawmempool":         handleGetRawMempool,
 	"gettxout":              handleGetTxOut,
 	"gettxoutsetinfo":       handleGetTxoutSetInfo,
@@ -509,22 +510,34 @@ func handleGetMempoolDescendants(s *Server, cmd interface{}, closeChan <-chan st
 }
 
 func handleGetMempoolInfo(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	/*
-		mempoolTxns := s.cfg.TxMemPool.TxDescs()
+	maxMempool := utils.GetArg("-maxmempool", int64(policy.DefaultMaxMemPoolSize))
+	ret := &btcjson.GetMempoolInfoResult{
+		Size:       len(blockchain.GMemPool.PoolData),
+		Bytes:      blockchain.GMemPool.TotalTxSize,
+		Usage:      blockchain.GMemPool.GetCacheUsage(),
+		MaxMempool: maxMempool,
+		//MempoolMinFee: valueFromAmount(mempool.GetMinFee(maxMempool)),		// todo realise
+	}
 
-		var numBytes int64
-		for _, txD := range mempoolTxns {
-			numBytes += int64(txD.Tx.MsgTx().SerializeSize())
-		}
+	return ret, nil
+}
 
-		ret := &btcjson.GetMempoolInfoResult{
-			Size:  int64(len(mempoolTxns)),
-			Bytes: numBytes,
-		}
+func valueFromAmount(sizeLimit int64) string {
+	sign := sizeLimit < 0
+	var nAbs int64
+	if sign {
+		nAbs = -sizeLimit
+	} else {
+		nAbs = sizeLimit
+	}
 
-		return ret, nil
-	*/
-	return nil, nil
+	quotient := nAbs / utils.COIN
+	remainder := nAbs % utils.COIN
+
+	if sign {
+		return fmt.Sprintf("-%d.%08d", quotient, remainder)
+	}
+	return fmt.Sprintf("%d.%08d", quotient, remainder)
 }
 
 func handleGetRawMempool(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {

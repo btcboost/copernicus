@@ -10,14 +10,13 @@ type commandHandler func(*Server, interface{}, <-chan struct{}) (interface{}, er
 // rpcHandlers maps RPC command strings to appropriate handler functions.
 // This is set by init because help references rpcHandlers and thus causes
 // a dependency loop.
-var rpcHandlers map[string]commandHandler
-var mapCommands = map[string]commandHandler{}
+var rpcHandlers = map[string]commandHandler{}
 
 func appendCommand(name string, cmd commandHandler) bool {
-	if _, ok := mapCommands[name]; ok {
+	if _, ok := rpcHandlers[name]; ok {
 		return false
 	}
-	mapCommands[name] = cmd
+	rpcHandlers[name] = cmd
 	return true
 }
 
