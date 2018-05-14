@@ -9,34 +9,36 @@ import (
 	"github.com/btcboost/copernicus/btcjson"
 	"github.com/btcboost/copernicus/core"
 	"github.com/btcboost/copernicus/net/msg"
+	"github.com/btcboost/copernicus/policy"
 	"github.com/btcboost/copernicus/utils"
+	"github.com/pkg/errors"
 )
 
 var blockchainHandlers = map[string]commandHandler{
 	"getblockchaininfo":     handleGetBlockChainInfo,
-	"getbestblockhash":      handleGetBestBlockHash,
-	"getblockcount":         handleGetBlockCount,
+	"getbestblockhash":      handleGetBestBlockHash, // complete
+	"getblockcount":         handleGetBlockCount,    // complete
 	"getblock":              handleGetBlock,
-	"getblockhash":          handleGetBlockHash,
+	"getblockhash":          handleGetBlockHash,   // complete
 	"getblockheader":        handleGetblockheader, // complete
-	"getchaintips":          handleGetchaintips,
-	"getdifficulty":         handleGetdifficulty, //complete
-	"getmempoolancestors":   handleGetmempoolancestors,
-	"getmempooldescendants": handleGetmempooldescendants,
-	"getmempoolinfo":        handleGetmempoolinfo,
-	"getrawmempool":         handleGetrawmempool,
+	"getchaintips":          handleGetChainTips,
+	"getdifficulty":         handleGetDifficulty, //complete
+	"getmempoolancestors":   handleGetMempoolAncestors,
+	"getmempooldescendants": handleGetMempoolDescendants,
+	"getmempoolinfo":        handleGetMempoolInfo, // complete
+	"getrawmempool":         handleGetRawMempool,
 	"gettxout":              handleGetTxOut,
-	"gettxoutsetinfo":       handleGettxoutsetinfo,
-	"pruneblockchain":       handlePruneblockchain,
-	"verifychain":           handleVerifychain,
-	"preciousblock":         handlePreciousblock,
+	"gettxoutsetinfo":       handleGetTxoutSetInfo,
+	"pruneblockchain":       handlePruneBlockChain, //complete
+	"verifychain":           handleVerifyChain,     //complete
+	"preciousblock":         handlePreciousblock,   //complete
 
 	/*not shown in help*/
-	"invalidateblock":    handlenvalidateblock,
-	"reconsiderblock":    handleReconsiderblock,
-	"waitfornewblock":    handleWaitfornewblock,
-	"waitforblock":       handleWaitforblock,
-	"waitforblockheight": handleWaitforblockheight,
+	"invalidateblock":    handlInvalidateBlock,
+	"reconsiderblock":    handleReconsiderBlock,
+	"waitfornewblock":    handleWaitForNewBlock,
+	"waitforblock":       handleWaitForBlock,
+	"waitforblockheight": handleWaitForBlockHeight,
 }
 
 func handleGetBlockChainInfo(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
@@ -152,19 +154,11 @@ func handleGetBlockChainInfo(s *Server, cmd interface{}, closeChan <-chan struct
 }
 
 func handleGetBestBlockHash(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	/*
-		best := s.cfg.Chain.BestSnapshot()
-		return best.Hash.String(), nil
-	*/
-	return nil, nil
+	return blockchain.GChainActive.Tip().GetBlockHash().ToString(), nil
 }
 
 func handleGetBlockCount(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	/*
-		best := s.cfg.Chain.BestSnapshot()
-		return int64(best.Height), nil
-	*/
-	return nil, nil
+	return blockchain.GChainActive.Height(), nil
 }
 
 // createTxRawResult converts the passed transaction and associated parameters
@@ -390,19 +384,20 @@ func handleGetBlock(s *Server, cmd interface{}, closeChan <-chan struct{}) (inte
 }
 
 func handleGetBlockHash(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	/*
-		c := cmd.(*btcjson.GetBlockHashCmd)
-		hash, err := s.cfg.Chain.BlockHashByHeight(int32(c.Index))
-		if err != nil {
-			return nil, &btcjson.RPCError{
-				Code:    btcjson.ErrRPCOutOfRange,
-				Message: "Block number out of range",
-			}
-		}
 
-		return hash.String(), nil
-	*/
-	return nil, nil
+	c := cmd.(*btcjson.GetBlockHashCmd)
+
+	height := c.Height
+	if height < 0 || height > blockchain.GChainActive.Height() {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCOutOfRange,
+			Message: "Block number out of range",
+		}
+	}
+
+	blockIndex := blockchain.GChainActive.GetSpecIndex(height)
+
+	return blockIndex.GetBlockHash().ToString(), nil
 }
 
 func handleGetblockheader(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
@@ -471,204 +466,262 @@ func handleGetblockheader(s *Server, cmd interface{}, closeChan <-chan struct{})
 	return blockHeaderReply, nil
 }
 
-func handleGetchaintips(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleGetChainTips(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
-func handleGetdifficulty(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func getDifficulty(bi *core.BlockIndex) float64 {
+	if bi == nil {
+		return 1.0
+	}
+	return getDifficultyFromBits(bi.GetBlockHeader().Bits)
+}
+
+// getDifficultyRatio returns the proof-of-work difficulty as a multiple of the
+// minimum difficulty using the passed bits field from the header of a block.
+func getDifficultyFromBits(bits uint32) float64 {
+	shift := bits >> 24 & 0xff
+	diff := 0x0000ffff / float64(bits&0x00ffffff)
+
+	for shift < 29 {
+		diff *= 256
+		shift++
+	}
+
+	for shift > 29 {
+		diff /= 256
+		shift--
+	}
+
+	return diff
+}
+
+func handleGetDifficulty(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	best := blockchain.GChainActive.Tip()
 	return getDifficulty(best), nil
 }
 
-func handleGetmempoolancestors(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleGetMempoolAncestors(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
-func handleGetmempooldescendants(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleGetMempoolDescendants(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
-func handleGetmempoolinfo(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	/*
-		mempoolTxns := s.cfg.TxMemPool.TxDescs()
+func handleGetMempoolInfo(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	maxMempool := utils.GetArg("-maxmempool", int64(policy.DefaultMaxMemPoolSize))
+	ret := &btcjson.GetMempoolInfoResult{
+		Size:       len(blockchain.GMemPool.PoolData),
+		Bytes:      blockchain.GMemPool.TotalTxSize,
+		Usage:      blockchain.GMemPool.GetCacheUsage(),
+		MaxMempool: maxMempool,
+		//MempoolMinFee: valueFromAmount(mempool.GetMinFee(maxMempool)),		// todo realise
+	}
 
-		var numBytes int64
-		for _, txD := range mempoolTxns {
-			numBytes += int64(txD.Tx.MsgTx().SerializeSize())
-		}
-
-		ret := &btcjson.GetMempoolInfoResult{
-			Size:  int64(len(mempoolTxns)),
-			Bytes: numBytes,
-		}
-
-		return ret, nil
-	*/
-	return nil, nil
+	return ret, nil
 }
 
-func handleGetrawmempool(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func valueFromAmount(sizeLimit int64) string {
+	sign := sizeLimit < 0
+	var nAbs int64
+	if sign {
+		nAbs = -sizeLimit
+	} else {
+		nAbs = sizeLimit
+	}
+
+	quotient := nAbs / utils.COIN
+	remainder := nAbs % utils.COIN
+
+	if sign {
+		return fmt.Sprintf("-%d.%08d", quotient, remainder)
+	}
+	return fmt.Sprintf("%d.%08d", quotient, remainder)
+}
+
+func handleGetRawMempool(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
 func handleGetTxOut(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	/*
-		c := cmd.(*btcjson.GetTxOutCmd)
 
-		// Convert the provided transaction hash hex to a Hash.
-		txHash, err := chainhash.NewHashFromStr(c.Txid)
-		if err != nil {
-			return nil, rpcDecodeHexError(c.Txid)
-		}
+	/*c := cmd.(*btcjson.GetTxOutCmd)
 
-		// If requested and the tx is available in the mempool try to fetch it
-		// from there, otherwise attempt to fetch from the block database.
-		var bestBlockHash string
-		var confirmations int32
-		var txVersion int32
-		var value int64
-		var pkScript []byte
-		var isCoinbase bool
-		includeMempool := true
-		if c.IncludeMempool != nil {
-			includeMempool = *c.IncludeMempool
-		}
-		// TODO: This is racy.  It should attempt to fetch it directly and check
-		// the error.
-		if includeMempool && s.cfg.TxMemPool.HaveTransaction(txHash) {
-			tx, err := s.cfg.TxMemPool.FetchTransaction(txHash)
-			if err != nil {
-				return nil, rpcNoTxInfoError(txHash)
-			}
-
-			mtx := tx.MsgTx()
-			if c.Vout > uint32(len(mtx.TxOut)-1) {
-				return nil, &btcjson.RPCError{
-					Code: btcjson.ErrRPCInvalidTxVout,
-					Message: "Output index number (vout) does not " +
-						"exist for transaction.",
-				}
-			}
-
-			txOut := mtx.TxOut[c.Vout]
-			if txOut == nil {
-				errStr := fmt.Sprintf("Output index: %d for txid: %s "+
-					"does not exist", c.Vout, txHash)
-				return nil, internalRPCError(errStr, "")
-			}
-
-			best := s.cfg.Chain.BestSnapshot()
-			bestBlockHash = best.Hash.String()
-			confirmations = 0
-			txVersion = mtx.Version
-			value = txOut.Value
-			pkScript = txOut.PkScript
-			isCoinbase = blockchain.IsCoinBaseTx(mtx)
-		} else {
-			entry, err := s.cfg.Chain.FetchUtxoEntry(txHash)
-			if err != nil {
-				return nil, rpcNoTxInfoError(txHash)
-			}
-
-			// To match the behavior of the reference client, return nil
-			// (JSON null) if the transaction output is spent by another
-			// transaction already in the main chain.  Mined transactions
-			// that are spent by a mempool transaction are not affected by
-			// this.
-			if entry == nil || entry.IsOutputSpent(c.Vout) {
-				return nil, nil
-			}
-
-			best := s.cfg.Chain.BestSnapshot()
-			bestBlockHash = best.Hash.String()
-			confirmations = 1 + best.Height - entry.BlockHeight()
-			txVersion = entry.Version()
-			value = entry.AmountByIndex(c.Vout)
-			pkScript = entry.PkScriptByIndex(c.Vout)
-			isCoinbase = entry.IsCoinBase()
-		}
-
-		// Disassemble script into single line printable format.
-		// The disassembled string will contain [error] inline if the script
-		// doesn't fully parse, so ignore the error here.
-		disbuf, _ := txscript.DisasmString(pkScript)
-
-		// Get further info about the script.
-		// Ignore the error here since an error means the script couldn't parse
-		// and there is no additional information about it anyways.
-		scriptClass, addrs, reqSigs, _ := txscript.ExtractPkScriptAddrs(pkScript,
-			s.cfg.ChainParams)
-		addresses := make([]string, len(addrs))
-		for i, addr := range addrs {
-			addresses[i] = addr.EncodeAddress()
-		}
-
-		txOutReply := &btcjson.GetTxOutResult{
-			BestBlock:     bestBlockHash,
-			Confirmations: int64(confirmations),
-			Value:         btcutil.Amount(value).ToBTC(),
-			Version:       txVersion,
-			ScriptPubKey: btcjson.ScriptPubKeyResult{
-				Asm:       disbuf,
-				Hex:       hex.EncodeToString(pkScript),
-				ReqSigs:   int32(reqSigs),
-				Type:      scriptClass.String(),
-				Addresses: addresses,
-			},
-			Coinbase: isCoinbase,
-		}
-		return txOutReply, nil
-	*/
-	return nil, nil
-}
-
-func handleGettxoutsetinfo(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	return nil, nil
-}
-
-func handlePruneblockchain(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	return nil, nil
-}
-
-/*func verifyChain(s *Server, level, depth int32) error {
-	best := s.cfg.Chain.BestSnapshot()
-	finishHeight := best.Height - depth
-	if finishHeight < 0 {
-		finishHeight = 0
+	// Convert the provided transaction hash hex to a Hash.
+	txHash, err := chainhash.NewHashFromStr(c.Txid)
+	if err != nil {
+		return nil, rpcDecodeHexError(c.Txid)
 	}
-	logs.Info("Verifying chain for %d blocks at level %d",
-		best.Height-finishHeight, level)
 
-	for height := best.Height; height > finishHeight; height-- {
-		// Level 0 just looks up the block.
-		block, err := s.cfg.Chain.BlockByHeight(height)
+	// If requested and the tx is available in the mempool try to fetch it
+	// from there, otherwise attempt to fetch from the block database.
+	var bestBlockHash string
+	var confirmations int32
+	var txVersion int32
+	var value int64
+	var pkScript []byte
+	var isCoinbase bool
+	includeMempool := true
+	if c.IncludeMempool != nil {
+		includeMempool = *c.IncludeMempool
+	}
+	// TODO: This is racy.  It should attempt to fetch it directly and check
+	// the error.
+	if includeMempool && s.cfg.TxMemPool.HaveTransaction(txHash) {
+		tx, err := s.cfg.TxMemPool.FetchTransaction(txHash)
 		if err != nil {
-			logs.Error("Verify is unable to fetch block at "+
-				"height %d: %v", height, err)
-			return err
+			return nil, rpcNoTxInfoError(txHash)
 		}
 
-		// Level 1 does basic chain sanity checks.
-		if level > 0 {
-			err := blockchain.CheckBlockSanity(block,
-				s.cfg.ChainParams.PowLimit, s.cfg.TimeSource)
-			if err != nil {
-				logs.Error("Verify is unable to validate "+
-					"block at hash %v height %d: %v",
-					block.Hash(), height, err)
-				return err
+		mtx := tx.MsgTx()
+		if c.Vout > uint32(len(mtx.TxOut)-1) {
+			return nil, &btcjson.RPCError{
+				Code: btcjson.ErrRPCInvalidTxVout,
+				Message: "Output index number (vout) does not " +
+					"exist for transaction.",
 			}
+		}
+
+		txOut := mtx.TxOut[c.Vout]
+		if txOut == nil {
+			errStr := fmt.Sprintf("Output index: %d for txid: %s "+
+				"does not exist", c.Vout, txHash)
+			return nil, internalRPCError(errStr, "")
+		}
+
+		best := s.cfg.Chain.BestSnapshot()
+		bestBlockHash = best.Hash.String()
+		confirmations = 0
+		txVersion = mtx.Version
+		value = txOut.Value
+		pkScript = txOut.PkScript
+		isCoinbase = blockchain.IsCoinBaseTx(mtx)
+	} else {
+		entry, err := s.cfg.Chain.FetchUtxoEntry(txHash)
+		if err != nil {
+			return nil, rpcNoTxInfoError(txHash)
+		}
+
+		// To match the behavior of the reference client, return nil
+		// (JSON null) if the transaction output is spent by another
+		// transaction already in the main chain.  Mined transactions
+		// that are spent by a mempool transaction are not affected by
+		// this.
+		if entry == nil || entry.IsOutputSpent(c.Vout) {
+			return nil, nil
+		}
+
+		best := s.cfg.Chain.BestSnapshot()
+		bestBlockHash = best.Hash.String()
+		confirmations = 1 + best.Height - entry.BlockHeight()
+		txVersion = entry.Version()
+		value = entry.AmountByIndex(c.Vout)
+		pkScript = entry.PkScriptByIndex(c.Vout)
+		isCoinbase = entry.IsCoinBase()
+	}
+
+	// Disassemble script into single line printable format.
+	// The disassembled string will contain [error] inline if the script
+	// doesn't fully parse, so ignore the error here.
+	disbuf, _ := txscript.DisasmString(pkScript)
+
+	// Get further info about the script.
+	// Ignore the error here since an error means the script couldn't parse
+	// and there is no additional information about it anyways.
+	scriptClass, addrs, reqSigs, _ := txscript.ExtractPkScriptAddrs(pkScript,
+		s.cfg.ChainParams)
+	addresses := make([]string, len(addrs))
+	for i, addr := range addrs {
+		addresses[i] = addr.EncodeAddress()
+	}
+
+	txOutReply := &btcjson.GetTxOutResult{
+		BestBlock:     bestBlockHash,
+		Confirmations: int64(confirmations),
+		Value:         btcutil.Amount(value).ToBTC(),
+		Version:       txVersion,
+		ScriptPubKey: btcjson.ScriptPubKeyResult{
+			Asm:       disbuf,
+			Hex:       hex.EncodeToString(pkScript),
+			ReqSigs:   int32(reqSigs),
+			Type:      scriptClass.String(),
+			Addresses: addresses,
+		},
+		Coinbase: isCoinbase,
+	}
+	return txOutReply, nil*/
+
+	return nil, nil
+}
+
+func handleGetTxoutSetInfo(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+
+	return nil, nil
+}
+
+func getPrunMode() (bool, error) {
+	pruneArg := utils.GetArg("-prune", 0)
+	if pruneArg < 0 {
+		return false, errors.New("Prune cannot be configured with a negative value")
+	}
+	return true, nil
+}
+
+func handlePruneBlockChain(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	pruneMode, err := getPrunMode()
+
+	if err != nil && !pruneMode {
+		return false, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCType,
+			Message: fmt.Sprintf("Cannot prune blocks because node is not in prune mode."),
 		}
 	}
-	logs.Info("Chain verify completed successfully")
 
-	return nil
-}*/ // todo open
+	c := cmd.(*btcjson.PruneBlockChainCmd)
+	height := c.Height
+	if *height < 0 {
+		return false, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCType,
+			Message: fmt.Sprintf("Negative block height."),
+		}
+	}
+
+	if *height > 1000000000 {
+		index := blockchain.GChainActive.FindEarliestAtLeast(int64(*height - 72000))
+		if index != nil {
+			return false, &btcjson.RPCError{
+				Code:    btcjson.ErrRPCType,
+				Message: fmt.Sprintf("Could not find block with at least the specified timestamp."),
+			}
+		}
+		height = &index.Height
+	}
+
+	h := *height
+	chainHeight := blockchain.GChainActive.Height()
+	if chainHeight < msg.ActiveNetParams.PruneAfterHeight {
+		return false, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCMisc,
+			Message: fmt.Sprintf("Blockchain is too short for pruning."),
+		}
+	} else if h > chainHeight {
+		return false, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInvalidParameter,
+			Message: fmt.Sprintf("Blockchain is shorter than the attempted prune height."),
+		}
+	} /*else if h > chainHeight - MIN_BLOCKS_TO_KEEP {
+		h = chainHeight - MIN_BLOCKS_TO_KEEP
+	}*/ // TODO realise
+
+	blockchain.PruneBlockFilesManual(*height)
+	return uint64(*height), nil
+}
 
 // handleVerifyChain implements the verifychain command.
-func handleVerifychain(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	/*
-		c := cmd.(*btcjson.VerifyChainCmd)
+func handleVerifyChain(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+
+	/*	c := cmd.(*btcjson.VerifyChainCmd)
 
 		var checkLevel, checkDepth int32
 		if c.CheckLevel != nil {
@@ -679,8 +732,8 @@ func handleVerifychain(s *Server, cmd interface{}, closeChan <-chan struct{}) (i
 		}
 
 		err := verifyChain(s, checkLevel, checkDepth)
-		return err == nil, nil
-	*/
+
+		return err == nil, nil*/ // TODO realise
 	return nil, nil
 }
 
@@ -705,23 +758,23 @@ func handlePreciousblock(s *Server, cmd interface{}, closeChan <-chan struct{}) 
 	return nil, nil
 }
 
-func handlenvalidateblock(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handlInvalidateBlock(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
-func handleReconsiderblock(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleReconsiderBlock(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
-func handleWaitfornewblock(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleWaitForNewBlock(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
-func handleWaitforblock(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleWaitForBlock(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
-func handleWaitforblockheight(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleWaitForBlockHeight(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 

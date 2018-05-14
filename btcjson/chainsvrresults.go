@@ -121,12 +121,13 @@ type GetBlockChainInfoResult struct {
 // GetBlockTemplateResultTx models the transactions field of the
 // getblocktemplate command.
 type GetBlockTemplateResultTx struct {
-	Data    string  `json:"data"`
-	Hash    string  `json:"hash"`
-	Depends []int64 `json:"depends"`
-	Fee     int64   `json:"fee"`
-	SigOps  int64   `json:"sigops"`
-	Weight  int64   `json:"weight"`
+	Data    string `json:"data"`
+	TxID    string `json:"txid"`
+	Hash    string `json:"hash"`
+	Depends []int  `json:"depends"`
+	Fee     int64  `json:"fee"`
+	SigOps  int64  `json:"sigops"`
+	Weight  int64  `json:"weight"`
 }
 
 // GetBlockTemplateResultAux models the coinbaseaux field of the
@@ -154,9 +155,6 @@ type GetBlockTemplateResult struct {
 	CoinbaseValue *int64                     `json:"coinbasevalue,omitempty"`
 	WorkID        string                     `json:"workid,omitempty"`
 
-	// Witness commitment defined in BIP 0141.
-	DefaultWitnessCommitment string `json:"default_witness_commitment,omitempty"`
-
 	// Optional long polling from BIP 0022.
 	LongPollID  string `json:"longpollid,omitempty"`
 	LongPollURI string `json:"longpolluri,omitempty"`
@@ -173,8 +171,13 @@ type GetBlockTemplateResult struct {
 	NonceRange string   `json:"noncerange,omitempty"`
 
 	// Block proposal from BIP 0023.
-	Capabilities  []string `json:"capabilities,omitempty"`
-	RejectReasion string   `json:"reject-reason,omitempty"`
+	Capabilities []string `json:"capabilities,omitempty"`
+	RejectReason string   `json:"reject-reason,omitempty"`
+
+	// BCH
+	Rules       []string       `json:"rules"`
+	VbAvailable map[string]int `json:"vbavailable"`
+	VbRequired  int            `json:"vbrequired"`
 }
 
 // GetMempoolEntryResult models the data returned from the getmempoolentry
@@ -199,8 +202,11 @@ type GetMempoolEntryResult struct {
 // GetMempoolInfoResult models the data returned from the getmempoolinfo
 // command.
 type GetMempoolInfoResult struct {
-	Size  int64 `json:"size"`
-	Bytes int64 `json:"bytes"`
+	Size          int     `json:"size"`
+	Bytes         uint64  `json:"bytes"`
+	Usage         int64   `json:"usage"`
+	MaxMempool    int64   `json:"maxmempool"`
+	MempoolMinFee float64 `json:"mempoolminfee"`
 }
 
 // NetworksResult models the networks data from the getnetworkinfo command.

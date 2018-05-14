@@ -20,16 +20,21 @@ var miscHandlers = map[string]commandHandler{
 
 func handleGetInfo(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	best := blockchain.GChainActive.Tip()
+	var height int32
+	if best == nil {
+		height = 0
+	}
+
 	ret := &btcjson.InfoChainResult{
 		Version:         protocol.Copernicus,
 		ProtocolVersion: int32(protocol.BitcoinProtocolVersion),
-		Blocks:          int32(best.Height),
+		Blocks:          height,
 		TimeOffset:      utils.GetTimeOffset(),
-		Connections:     s.cfg.ConnMgr.ConnectedCount(),
-		Proxy:           conf.AppConf.Proxy,
-		Difficulty:      getDifficulty(blockchain.GChainActive.Tip()),
-		TestNet:         conf.AppConf.TestNet3,
-		RelayFee:        float64(blockchain.DefaultMinRelayTxFee),
+		//Connections: s.cfg.ConnMgr.ConnectedCount(),
+		Proxy:      conf.AppConf.Proxy,
+		Difficulty: getDifficulty(blockchain.GChainActive.Tip()),
+		TestNet:    conf.AppConf.TestNet3,
+		RelayFee:   float64(blockchain.DefaultMinRelayTxFee),
 	}
 
 	return ret, nil
