@@ -675,8 +675,7 @@ func handlePruneBlockChain(s *Server, cmd interface{}, closeChan <-chan struct{}
 	}
 
 	if *height > 1000000000 {
-		var index *core.BlockIndex
-		index = blockchain.GChainActive.FindEarliestAtLeast(int64(*height - 72000))
+		index := blockchain.GChainActive.FindEarliestAtLeast(int64(*height - 72000))
 		if index != nil {
 			return false, &btcjson.RPCError{
 				Code:    btcjson.ErrRPCType,
@@ -687,8 +686,7 @@ func handlePruneBlockChain(s *Server, cmd interface{}, closeChan <-chan struct{}
 	}
 
 	h := *height
-	var chainHeight int
-	chainHeight = blockchain.GChainActive.Height()
+	chainHeight := blockchain.GChainActive.Height()
 	if chainHeight < msg.ActiveNetParams.PruneAfterHeight {
 		return false, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCMisc,
@@ -701,7 +699,7 @@ func handlePruneBlockChain(s *Server, cmd interface{}, closeChan <-chan struct{}
 		}
 	} /*else if h > chainHeight - MIN_BLOCKS_TO_KEEP {
 		h = chainHeight - MIN_BLOCKS_TO_KEEP
-	}*/// TODO realise
+	}*/ // TODO realise
 
 	blockchain.PruneBlockFilesManual(*height)
 	return uint64(*height), nil
@@ -722,7 +720,7 @@ func handleVerifyChain(s *Server, cmd interface{}, closeChan <-chan struct{}) (i
 
 		err := verifyChain(s, checkLevel, checkDepth)
 
-		return err == nil, nil*/// TODO realise
+		return err == nil, nil*/ // TODO realise
 	return nil, nil
 }
 

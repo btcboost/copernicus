@@ -757,7 +757,6 @@ func NewVerifyTxOutProofCmd(proof string) *VerifyTxOutProofCmd {
 	}
 }
 
-
 // PruneBlockChainCmd defines the pruneblockchain JSON-RPC command.
 type PruneBlockChainCmd struct {
 	Height *int
@@ -770,7 +769,6 @@ func NewPruneBlockChainCmd(height *int) *PruneBlockChainCmd {
 		Height: height,
 	}
 }
-
 
 func init() {
 	// No special flags for commands in this file.

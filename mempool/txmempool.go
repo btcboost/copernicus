@@ -298,7 +298,7 @@ func (m *TxMempool) AddTx(txentry *TxEntry, limitAncestorCount uint64,
 	m.updateAncestorsOf(true, txentry, ancestors)
 	m.UpdateEntryForAncestors(txentry, ancestors)
 	m.totalTxSize += uint64(txentry.TxSize)
-	m.transactionsUpdated++
+	m.TransactionsUpdated++
 	m.TxByAncestorFeeRateSort.ReplaceOrInsert(EntryAncestorFeeRateSort(*txentry))
 	if txentry.SumTxCountWithAncestors == 1 {
 		m.rootTx[txentry.Tx.Hash] = txentry
@@ -667,7 +667,7 @@ func (m *TxMempool) delTxentry(removeEntry *TxEntry, reason PoolRemovalReason) {
 
 	}
 	m.cacheInnerUsage -= int64(removeEntry.usageSize) + int64(unsafe.Sizeof(removeEntry))
-	m.transactionsUpdated++
+	m.TransactionsUpdated++
 	m.totalTxSize -= uint64(removeEntry.TxSize)
 	delete(m.PoolData, removeEntry.Tx.Hash)
 	m.timeSortData.Delete(removeEntry)
