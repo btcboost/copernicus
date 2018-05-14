@@ -55,9 +55,9 @@ type TxMempool struct {
 	cacheInnerUsage         int64
 	checkFrequency          float64
 	// sum of all mempool tx's size.
-	totalTxSize uint64
+	TotalTxSize uint64
 	//transactionsUpdated mempool update transaction total number when create mempool late.
-	transactionsUpdated uint64
+	TransactionsUpdated uint64
 }
 
 func (m *TxMempool) GetCacheUsage() int64 {
@@ -234,7 +234,7 @@ func (m *TxMempool) Check(coins *utxo.CoinsViewCache, bestHeight int) {
 		}
 	}
 
-	if m.totalTxSize != checkTotal {
+	if m.TotalTxSize != checkTotal {
 		panic("mempool have all transaction size state is incorrect ...")
 	}
 }
@@ -297,8 +297,9 @@ func (m *TxMempool) AddTx(txentry *TxEntry, limitAncestorCount uint64,
 
 	m.updateAncestorsOf(true, txentry, ancestors)
 	m.UpdateEntryForAncestors(txentry, ancestors)
-	m.totalTxSize += uint64(txentry.TxSize)
-	m.transactionsUpdated++
+	m.TotalTxSize += uint64(txentry.TxSize)
+	m.TransactionsUpdated++
+
 	m.TxByAncestorFeeRateSort.ReplaceOrInsert(EntryAncestorFeeRateSort(*txentry))
 	if txentry.SumTxCountWithAncestors == 1 {
 		m.rootTx[txentry.Tx.Hash] = txentry
@@ -667,8 +668,9 @@ func (m *TxMempool) delTxentry(removeEntry *TxEntry, reason PoolRemovalReason) {
 
 	}
 	m.cacheInnerUsage -= int64(removeEntry.usageSize) + int64(unsafe.Sizeof(removeEntry))
-	m.transactionsUpdated++
-	m.totalTxSize -= uint64(removeEntry.TxSize)
+	m.TransactionsUpdated++
+	m.TotalTxSize -= uint64(removeEntry.TxSize)
+
 	delete(m.PoolData, removeEntry.Tx.Hash)
 	m.timeSortData.Delete(removeEntry)
 	m.TxByAncestorFeeRateSort.Delete(EntryAncestorFeeRateSort(*removeEntry))
@@ -754,4 +756,8 @@ func DeserializeInfo(r io.Reader) (*TxMempoolInfo, error) {
 		Time:     int64(Time),
 		FeeDelta: int64(FeeDelta),
 	}, nil
+}
+
+func GetTxByHash(hash *utils.Hash) *core.Tx {
+	return nil
 }

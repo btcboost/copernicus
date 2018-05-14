@@ -21,7 +21,6 @@ const (
 	// peer.
 	ANAdd AddNodeSubCmd = "add"
 
-	// ANRemove indicates the specified peer should be removed.
 	ANRemove AddNodeSubCmd = "remove"
 
 	// ANOneTry indicates the specified host should try to connect once,
@@ -165,14 +164,14 @@ func NewGetBlockCountCmd() *GetBlockCountCmd {
 
 // GetBlockHashCmd defines the getblockhash JSON-RPC command.
 type GetBlockHashCmd struct {
-	Index int64
+	Height int
 }
 
 // NewGetBlockHashCmd returns a new instance which can be used to issue a
 // getblockhash JSON-RPC command.
-func NewGetBlockHashCmd(index int64) *GetBlockHashCmd {
+func NewGetBlockHashCmd(index int) *GetBlockHashCmd {
 	return &GetBlockHashCmd{
-		Index: index,
+		Height: index,
 	}
 }
 
@@ -214,6 +213,9 @@ type TemplateRequest struct {
 	// "proposal".
 	Data   string `json:"data,omitempty"`
 	WorkID string `json:"workid,omitempty"`
+
+	// BCH
+	Rules []string `json:"rules"`
 }
 
 // convertTemplateRequestField potentially converts the provided value as
@@ -679,6 +681,21 @@ func NewUptimeCmd() *UptimeCmd {
 	return &UptimeCmd{}
 }
 
+// SignMessageWithPrivkeyCmd defines the handleSignMessageWithprivkey JSON-RPC command.
+type SignMessageWithPrivkeyCmd struct {
+	Privkey string
+	Message string
+}
+
+// NewSignMessageWithPrivkeyCmd returns a new instance which can be used to issue a
+// validateaddress JSON-RPC command.
+func NewSignMessageWithPrivkeyCmd(privkey string, msg string) *SignMessageWithPrivkeyCmd {
+	return &SignMessageWithPrivkeyCmd{
+		Privkey: privkey,
+		Message: msg,
+	}
+}
+
 // ValidateAddressCmd defines the validateaddress JSON-RPC command.
 type ValidateAddressCmd struct {
 	Address string
@@ -739,6 +756,21 @@ func NewVerifyTxOutProofCmd(proof string) *VerifyTxOutProofCmd {
 		Proof: proof,
 	}
 }
+
+
+// PruneBlockChainCmd defines the pruneblockchain JSON-RPC command.
+type PruneBlockChainCmd struct {
+	Height *int
+}
+
+// NewPruneBlockChainCmd returns a new instance which can be used to issue a
+// pruneblockchain JSON-RPC command.
+func NewPruneBlockChainCmd(height *int) *PruneBlockChainCmd {
+	return &PruneBlockChainCmd{
+		Height: height,
+	}
+}
+
 
 func init() {
 	// No special flags for commands in this file.

@@ -9,6 +9,7 @@ const (
 	SigHashAll          = 1
 	SigHashNone         = 2
 	SigHashSingle       = 3
+	SigHashForkID       = 0x40
 	SigHashAnyoneCanpay = 128
 )
 

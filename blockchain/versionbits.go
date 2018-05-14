@@ -31,20 +31,20 @@ const (
 )
 
 type BIP9DeploymentInfo struct {
-	name     string
-	gbtForce bool
+	Name     string
+	GbtForce bool
 }
 
 type ThresholdConditionCache map[*core.BlockIndex]ThresholdState
 
 var VersionBitsDeploymentInfo = []BIP9DeploymentInfo{
 	{
-		name:     "testdummy",
-		gbtForce: true,
+		Name:     "testdummy",
+		GbtForce: true,
 	},
 	{
-		name:     "csv",
-		gbtForce: true,
+		Name:     "csv",
+		GbtForce: true,
 	},
 }
 
