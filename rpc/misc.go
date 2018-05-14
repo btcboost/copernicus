@@ -13,9 +13,11 @@ var miscHandlers = map[string]commandHandler{
 	"validateaddress":        handleValidateAddress,
 	"createmultisig":         handleCreatemultisig,
 	"verifymessage":          handleVerifyMessage,
-	"signmessagewithprivkey": handleSignMessageWithprivkey,
+	"signmessagewithprivkey": handleSignMessageWithPrivkey,
 	"setmocktime":            handleSetMocktime,
 	"echo":                   handleEcho,
+	"help":                   handleHelp,
+	"stop":                   handleStop,
 }
 
 func handleGetInfo(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
@@ -51,7 +53,7 @@ func handleValidateAddress(s *Server, cmd interface{}, closeChan <-chan struct{}
 			return result, nil
 		}
 
-		result.Address = addr.EncodeAddress()   */ // TODO realise
+		result.Address = addr.EncodeAddress()   */// TODO realise
 	result.IsValid = true
 
 	return result, nil
@@ -126,7 +128,7 @@ func handleVerifyMessage(s *Server, cmd interface{}, closeChan <-chan struct{}) 
 	return nil, nil
 }
 
-func handleSignMessageWithprivkey(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleSignMessageWithPrivkey(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	//c := cmd.(*btcjson.SignMessageWithPrivkeyCmd)
 	return nil, nil
 }
@@ -137,6 +139,46 @@ func handleSetMocktime(s *Server, cmd interface{}, closeChan <-chan struct{}) (i
 
 func handleEcho(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
+}
+
+// handleHelp implements the help command.
+func handleHelp(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.HelpCmd)
+	var command string
+	if c.Command != nil {
+		command = *c.Command
+	}
+	if command == "" {
+		usage, err := s.helpCacher.rpcUsage(false)
+		if err != nil {
+			context := "Failed to generate RPC usage"
+			return nil, internalRPCError(err.Error(), context)
+		}
+		return usage, nil
+	}
+
+	if _, ok := rpcHandlers[command]; !ok {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInvalidParameter,
+			Message: "Unknown command: " + command,
+		}
+	}
+
+	help, err := s.helpCacher.rpcMethodHelp(command)
+	if err != nil {
+		context := "Failed to generate help"
+		return nil, internalRPCError(err.Error(), context)
+	}
+	return help, nil
+}
+
+// handleStop implements the stop command.
+func handleStop(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	select {
+	case s.requestProcessShutdown <- struct{}{}:
+	default:
+	}
+	return "stopping.", nil
 }
 
 func registerMiscRPCCommands() {
