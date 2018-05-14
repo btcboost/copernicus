@@ -19,7 +19,7 @@ var blockchainHandlers = map[string]commandHandler{
 	"getblockcount":         handleGetBlockCount,    // complete
 	"getblock":              handleGetBlock,
 	"getblockhash":          handleGetBlockHash,   // complete
-	"getblockheader":        handleGetblockheader, // complete
+	"getblockheader":        handleGetBlockHeader, // complete
 	"getchaintips":          handleGetChainTips,
 	"getdifficulty":         handleGetDifficulty, //complete
 	"getmempoolancestors":   handleGetMempoolAncestors,
@@ -41,114 +41,122 @@ var blockchainHandlers = map[string]commandHandler{
 }
 
 func handleGetBlockChainInfo(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	/*
-		// Obtain a snapshot of the current best known blockchain state. We'll
-		// populate the response to this call primarily from this snapshot.
-		params := s.cfg.ChainParams
-		chain := s.cfg.Chain
-		chainSnapshot := chain.BestSnapshot()
 
-		chainInfo := &btcjson.GetBlockChainInfoResult{
-			Chain:         params.Name,
-			Blocks:        chainSnapshot.Height,
-			Headers:       chainSnapshot.Height,
-			BestBlockHash: chainSnapshot.Hash.String(),
-			Difficulty:    getDifficultyRatio(chainSnapshot.Bits, params),
-			MedianTime:    chainSnapshot.MedianTime.Unix(),
-			Pruned:        false,
-			Bip9SoftForks: make(map[string]*btcjson.Bip9SoftForkDescription),
-		}
+/*	// Obtain a snapshot of the current best known blockchain state. We'll
+	// populate the response to this call primarily from this snapshot.
+	var headers int32
+	if blockchain.GIndexBestHeader != nil {
+		headers = int32(blockchain.GIndexBestHeader.Height)
+	} else {
+		headers = -1
+	}
 
-		// Next, populate the response with information describing the current
-		// status of soft-forks deployed via the super-majority block
-		// signalling mechanism.
-		height := chainSnapshot.Height
-		chainInfo.SoftForks = []*btcjson.SoftForkDescription{
-			{
-				ID:      "bip34",
-				Version: 2,
-				Reject: struct {
-					Status bool `json:"status"`
-				}{
-					Status: height >= params.BIP0034Height,
-				},
+
+	tip := blockchain.GChainActive.Tip()
+	chainInfo := &btcjson.GetBlockChainInfoResult{
+		//Chain:         Params().NetworkingIDString(),            // TODO
+		Blocks:        int32(blockchain.GChainActive.Height()),
+		Headers:       headers,
+		BestBlockHash: tip.GetBlockHash().ToString(),
+		Difficulty:    getDifficulty(tip),
+		MedianTime:    tip.GetMedianTimePast(),
+		//VerificationProgress: blockchain.GuessVerificationProgress(Params().TxData(),
+		//	blockchain.GChainActive.Tip())            // TODO
+		ChainWork:     tip.ChainWork.String(),
+		Pruned:        false,
+		Bip9SoftForks: make(map[string]*btcjson.Bip9SoftForkDescription),
+	}
+
+	// Next, populate the response with information describing the current
+	// status of soft-forks deployed via the super-majority block
+	// signalling mechanism.
+	height := chainSnapshot.Height
+	chainInfo.SoftForks = []*btcjson.SoftForkDescription{
+		{
+			ID:      "bip34",
+			Version: 2,
+			Reject: struct {
+				Status bool `json:"status"`
+			}{
+				Status: height >= params.BIP0034Height,
 			},
-			{
-				ID:      "bip66",f
-				Version: 3,
-				Reject: struct {
-					Status bool `json:"status"`
-				}{
-					Status: height >= params.BIP0066Height,
-				},
+		},
+		{
+			ID:      "bip66", f
+			Version: 3,
+			Reject: struct {
+				Status bool `json:"status"`
+			}{
+				Status: height >= params.BIP0066Height,
 			},
-			{
-				ID:      "bip65",
-				Version: 4,
-				Reject: struct {
-					Status bool `json:"status"`
-				}{
-					Status: height >= params.BIP0065Height,
-				},
+		},
+		{
+			ID:      "bip65",
+			Version: 4,
+			Reject: struct {
+				Status bool `json:"status"`
+			}{
+				Status: height >= params.BIP0065Height,
 			},
-		}
+		},
+	}
 
-		// Finally, query the BIP0009 version bits state for all currently
-		// defined BIP0009 soft-fork deployments.
-		for deployment, deploymentDetails := range params.Deployments {
-			// Map the integer deployment ID into a human readable
-			// fork-name.
-			var forkName string
-			switch deployment {
-			case chaincfg.DeploymentTestDummy:
-				forkName = "dummy"
+	// Finally, query the BIP0009 version bits state for all currently
+	// defined BIP0009 soft-fork deployments.
+	for deployment, deploymentDetails := range params.Deployments {
+		// Map the integer deployment ID into a human readable
+		// fork-name.
+		var forkName string
+		switch deployment {
+		case chaincfg.DeploymentTestDummy:
+			forkName = "dummy"
 
-			case chaincfg.DeploymentCSV:
-				forkName = "csv"
+		case chaincfg.DeploymentCSV:
+			forkName = "csv"
 
-			case chaincfg.DeploymentSegwit:
-				forkName = "segwit"
+		case chaincfg.DeploymentSegwit:
+			forkName = "segwit"
 
-			default:
-				return nil, &btcjson.RPCError{
-					Code: btcjson.ErrRPCInternal.Code,
-					Message: fmt.Sprintf("Unknown deployment %v "+
-						"detected", deployment),
-				}
-			}
-
-			// Query the chain for the current status of the deployment as
-			// identified by its deployment ID.
-			deploymentStatus, err := chain.ThresholdState(uint32(deployment))
-			if err != nil {
-				context := "Failed to obtain deployment status"
-				return nil, internalRPCError(err.Error(), context)
-			}
-
-			// Attempt to convert the current deployment status into a
-			// human readable string. If the status is unrecognized, then a
-			// non-nil error is returned.
-			statusString, err := softForkStatus(deploymentStatus)
-			if err != nil {
-				return nil, &btcjson.RPCError{
-					Code: btcjson.ErrRPCInternal.Code,
-					Message: fmt.Sprintf("unknown deployment status: %v",
-						deploymentStatus),
-				}
-			}
-
-			// Finally, populate the soft-fork description with all the
-			// information gathered above.
-			chainInfo.Bip9SoftForks[forkName] = &btcjson.Bip9SoftForkDescription{
-				Status:    strings.ToLower(statusString),
-				Bit:       deploymentDetails.BitNumber,
-				StartTime: int64(deploymentDetails.StartTime),
-				Timeout:   int64(deploymentDetails.ExpireTime),
+		default:
+			return nil, &btcjson.RPCError{
+				Code: btcjson.ErrRPCInternal.Code,
+				Message: fmt.Sprintf("Unknown deployment %v "+
+					"detected", deployment),
 			}
 		}
 
-		return chainInfo, nil
-	*/
+		// Query the chain for the current status of the deployment as
+		// identified by its deployment ID.
+		deploymentStatus, err := chain.ThresholdState(uint32(deployment))
+		if err != nil {
+			context := "Failed to obtain deployment status"
+			return nil, internalRPCError(err.Error(), context)
+		}
+
+		// Attempt to convert the current deployment status into a
+		// human readable string. If the status is unrecognized, then a
+		// non-nil error is returned.
+		statusString, err := softForkStatus(deploymentStatus)
+		if err != nil {
+			return nil, &btcjson.RPCError{
+				Code: btcjson.ErrRPCInternal.Code,
+				Message: fmt.Sprintf("unknown deployment status: %v",
+					deploymentStatus),
+			}
+		}
+
+		// Finally, populate the soft-fork description with all the
+		// information gathered above.
+		chainInfo.Bip9SoftForks[forkName] = &btcjson.Bip9SoftForkDescription{
+			Status:    strings.ToLower(statusString),
+			Bit:       deploymentDetails.BitNumber,
+			StartTime: int64(deploymentDetails.StartTime),
+			Timeout:   int64(deploymentDetails.ExpireTime),
+		}
+	}
+
+	return chainInfo, nil
+*/
 	return nil, nil
 }
 
@@ -399,7 +407,7 @@ func handleGetBlockHash(s *Server, cmd interface{}, closeChan <-chan struct{}) (
 	return blockIndex.GetBlockHash().ToString(), nil
 }
 
-func handleGetblockheader(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleGetBlockHeader(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	c := cmd.(*btcjson.GetBlockHeaderCmd)
 
 	// Fetch the header from chain.
@@ -643,7 +651,6 @@ func handleGetTxOut(s *Server, cmd interface{}, closeChan <-chan struct{}) (inte
 }
 
 func handleGetTxoutSetInfo(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-
 	return nil, nil
 }
 
@@ -675,7 +682,8 @@ func handlePruneBlockChain(s *Server, cmd interface{}, closeChan <-chan struct{}
 	}
 
 	if *height > 1000000000 {
-		index := blockchain.GChainActive.FindEarliestAtLeast(int64(*height - 72000))
+		var index *core.BlockIndex
+		index = blockchain.GChainActive.FindEarliestAtLeast(int64(*height - 72000))
 		if index != nil {
 			return false, &btcjson.RPCError{
 				Code:    btcjson.ErrRPCType,
@@ -686,7 +694,8 @@ func handlePruneBlockChain(s *Server, cmd interface{}, closeChan <-chan struct{}
 	}
 
 	h := *height
-	chainHeight := blockchain.GChainActive.Height()
+	var chainHeight int
+	chainHeight = blockchain.GChainActive.Height()
 	if chainHeight < msg.ActiveNetParams.PruneAfterHeight {
 		return false, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCMisc,
@@ -699,7 +708,7 @@ func handlePruneBlockChain(s *Server, cmd interface{}, closeChan <-chan struct{}
 		}
 	} /*else if h > chainHeight - MIN_BLOCKS_TO_KEEP {
 		h = chainHeight - MIN_BLOCKS_TO_KEEP
-	}*/ // TODO realise
+	}*/// TODO realise
 
 	blockchain.PruneBlockFilesManual(*height)
 	return uint64(*height), nil
@@ -720,7 +729,7 @@ func handleVerifyChain(s *Server, cmd interface{}, closeChan <-chan struct{}) (i
 
 		err := verifyChain(s, checkLevel, checkDepth)
 
-		return err == nil, nil*/ // TODO realise
+		return err == nil, nil*/// TODO realise
 	return nil, nil
 }
 
@@ -746,10 +755,57 @@ func handlePreciousblock(s *Server, cmd interface{}, closeChan <-chan struct{}) 
 }
 
 func handlInvalidateBlock(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	//c := cmd.(*btcjson.InvalidateBlockCmd)
+	//hash, _ := utils.GetHashFromStr(c.BlockHash)
+	state := core.ValidationState{}
+
+	if len(blockchain.MapBlockIndex.Data) == 0 {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInvalidAddressOrKey,
+			Message: "Block not found",
+		}
+
+		//blkIndex := blockchain.MapBlockIndex.Data[*hash]
+		//blockchain.InvalidateBlock()                  // TODO
+	}
+	if state.IsValid() {
+		//blockchain.ActivateBestChain()        // TODO
+	}
+
+	if state.IsInvalid() {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCDatabase,
+			Message: state.GetRejectReason(),
+		}
+	}
+
 	return nil, nil
 }
 
 func handleReconsiderBlock(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.ReconsiderBlockCmd)
+	hash, _ := utils.GetHashFromStr(c.BlockHash)
+
+	if len(blockchain.MapBlockIndex.Data) == 0 {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCInvalidAddressOrKey,
+			Message: "Block not found",
+		}
+
+		blkIndex := blockchain.MapBlockIndex.Data[*hash]
+		blockchain.ResetBlockFailureFlags(blkIndex)
+	}
+
+	state := core.ValidationState{}
+	//blockchain.ActivateBestChain()
+
+	if state.IsInvalid() {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCDatabase,
+			Message: state.GetRejectReason(),
+		}
+	}
+
 	return nil, nil
 }
 

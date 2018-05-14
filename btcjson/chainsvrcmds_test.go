@@ -218,7 +218,7 @@ func TestChainSvrCmds(t *testing.T) {
 				return btcjson.NewGetBlockHashCmd(123)
 			},
 			marshalled:   `{"jsonrpc":"1.0","method":"getblockhash","params":[123],"id":1}`,
-			unmarshalled: &btcjson.GetBlockHashCmd{Height: 123},
+			unmarshalled: &btcjson.GetBlockHashCmd{Index: 123},
 		},
 		{
 			name: "getblockheader",
@@ -234,91 +234,89 @@ func TestChainSvrCmds(t *testing.T) {
 				Verbose: btcjson.Bool(true),
 			},
 		},
-		/*
-			{
-				name: "getblocktemplate",
-				newCmd: func() (interface{}, error) {
-					return btcjson.NewCmd("getblocktemplate")
-				},
-				staticCmd: func() interface{} {
-					return btcjson.NewGetBlockTemplateCmd(nil)
-				},
-				marshalled:   `{"jsonrpc":"1.0","method":"getblocktemplate","params":[],"id":1}`,
-				unmarshalled: &btcjson.GetBlockTemplateCmd{Request: nil},
+		{
+			name: "getblocktemplate",
+			newCmd: func() (interface{}, error) {
+				return btcjson.NewCmd("getblocktemplate")
 			},
-			{
-				name: "getblocktemplate optional - template request",
-				newCmd: func() (interface{}, error) {
-					return btcjson.NewCmd("getblocktemplate", `{"mode":"template","capabilities":["longpoll","coinbasetxn"]}`)
-				},
-				staticCmd: func() interface{} {
-					template := btcjson.TemplateRequest{
-						Mode:         "template",
-						Capabilities: []string{"longpoll", "coinbasetxn"},
-					}
-					return btcjson.NewGetBlockTemplateCmd(&template)
-				},
-				marshalled: `{"jsonrpc":"1.0","method":"getblocktemplate","params":[{"mode":"template","capabilities":["longpoll","coinbasetxn"]}],"id":1}`,
-				unmarshalled: &btcjson.GetBlockTemplateCmd{
-					Request: &btcjson.TemplateRequest{
-						Mode:         "template",
-						Capabilities: []string{"longpoll", "coinbasetxn"},
-					},
+			staticCmd: func() interface{} {
+				return btcjson.NewGetBlockTemplateCmd(nil)
+			},
+			marshalled:   `{"jsonrpc":"1.0","method":"getblocktemplate","params":[],"id":1}`,
+			unmarshalled: &btcjson.GetBlockTemplateCmd{Request: nil},
+		},
+		{
+			name: "getblocktemplate optional - template request",
+			newCmd: func() (interface{}, error) {
+				return btcjson.NewCmd("getblocktemplate", `{"mode":"template","capabilities":["longpoll","coinbasetxn"]}`)
+			},
+			staticCmd: func() interface{} {
+				template := btcjson.TemplateRequest{
+					Mode:         "template",
+					Capabilities: []string{"longpoll", "coinbasetxn"},
+				}
+				return btcjson.NewGetBlockTemplateCmd(&template)
+			},
+			marshalled: `{"jsonrpc":"1.0","method":"getblocktemplate","params":[{"mode":"template","capabilities":["longpoll","coinbasetxn"]}],"id":1}`,
+			unmarshalled: &btcjson.GetBlockTemplateCmd{
+				Request: &btcjson.TemplateRequest{
+					Mode:         "template",
+					Capabilities: []string{"longpoll", "coinbasetxn"},
 				},
 			},
-			{
-				name: "getblocktemplate optional - template request with tweaks",
-				newCmd: func() (interface{}, error) {
-					return btcjson.NewCmd("getblocktemplate", `{"mode":"template","capabilities":["longpoll","coinbasetxn"],"sigoplimit":500,"sizelimit":100000000,"maxversion":2}`)
-				},
-				staticCmd: func() interface{} {
-					template := btcjson.TemplateRequest{
-						Mode:         "template",
-						Capabilities: []string{"longpoll", "coinbasetxn"},
-						SigOpLimit:   500,
-						SizeLimit:    100000000,
-						MaxVersion:   2,
-					}
-					return btcjson.NewGetBlockTemplateCmd(&template)
-				},
-				marshalled: `{"jsonrpc":"1.0","method":"getblocktemplate","params":[{"mode":"template","capabilities":["longpoll","coinbasetxn"],"sigoplimit":500,"sizelimit":100000000,"maxversion":2}],"id":1}`,
-				unmarshalled: &btcjson.GetBlockTemplateCmd{
-					Request: &btcjson.TemplateRequest{
-						Mode:         "template",
-						Capabilities: []string{"longpoll", "coinbasetxn"},
-						SigOpLimit:   int64(500),
-						SizeLimit:    int64(100000000),
-						MaxVersion:   2,
-					},
+		},
+		{
+			name: "getblocktemplate optional - template request with tweaks",
+			newCmd: func() (interface{}, error) {
+				return btcjson.NewCmd("getblocktemplate", `{"mode":"template","capabilities":["longpoll","coinbasetxn"],"sigoplimit":500,"sizelimit":100000000,"maxversion":2}`)
+			},
+			staticCmd: func() interface{} {
+				template := btcjson.TemplateRequest{
+					Mode:         "template",
+					Capabilities: []string{"longpoll", "coinbasetxn"},
+					SigOpLimit:   500,
+					SizeLimit:    100000000,
+					MaxVersion:   2,
+				}
+				return btcjson.NewGetBlockTemplateCmd(&template)
+			},
+			marshalled: `{"jsonrpc":"1.0","method":"getblocktemplate","params":[{"mode":"template","capabilities":["longpoll","coinbasetxn"],"sigoplimit":500,"sizelimit":100000000,"maxversion":2}],"id":1}`,
+			unmarshalled: &btcjson.GetBlockTemplateCmd{
+				Request: &btcjson.TemplateRequest{
+					Mode:         "template",
+					Capabilities: []string{"longpoll", "coinbasetxn"},
+					SigOpLimit:   int64(500),
+					SizeLimit:    int64(100000000),
+					MaxVersion:   2,
 				},
 			},
-			{
-				name: "getblocktemplate optional - template request with tweaks 2",
-				newCmd: func() (interface{}, error) {
-					return btcjson.NewCmd("getblocktemplate", `{"mode":"template","capabilities":["longpoll","coinbasetxn"],"sigoplimit":true,"sizelimit":100000000,"maxversion":2}`)
-				},
-				staticCmd: func() interface{} {
-					template := btcjson.TemplateRequest{
-						Mode:         "template",
-						Capabilities: []string{"longpoll", "coinbasetxn"},
-						SigOpLimit:   true,
-						SizeLimit:    100000000,
-						MaxVersion:   2,
-					}
-					return btcjson.NewGetBlockTemplateCmd(&template)
-				},
-				marshalled: `{"jsonrpc":"1.0","method":"getblocktemplate","params":[{"mode":"template","capabilities":["longpoll","coinbasetxn"],"sigoplimit":true,"sizelimit":100000000,"maxversion":2}],"id":1}`,
-				unmarshalled: &btcjson.GetBlockTemplateCmd{
-					Request: &btcjson.TemplateRequest{
-						Mode:         "template",
-						Capabilities: []string{"longpoll", "coinbasetxn"},
-						SigOpLimit:   true,
-						SizeLimit:    int64(100000000),
-						MaxVersion:   2,
-					},
+		},
+		{
+			name: "getblocktemplate optional - template request with tweaks 2",
+			newCmd: func() (interface{}, error) {
+				return btcjson.NewCmd("getblocktemplate", `{"mode":"template","capabilities":["longpoll","coinbasetxn"],"sigoplimit":true,"sizelimit":100000000,"maxversion":2}`)
+			},
+			staticCmd: func() interface{} {
+				template := btcjson.TemplateRequest{
+					Mode:         "template",
+					Capabilities: []string{"longpoll", "coinbasetxn"},
+					SigOpLimit:   true,
+					SizeLimit:    100000000,
+					MaxVersion:   2,
+				}
+				return btcjson.NewGetBlockTemplateCmd(&template)
+			},
+			marshalled: `{"jsonrpc":"1.0","method":"getblocktemplate","params":[{"mode":"template","capabilities":["longpoll","coinbasetxn"],"sigoplimit":true,"sizelimit":100000000,"maxversion":2}],"id":1}`,
+			unmarshalled: &btcjson.GetBlockTemplateCmd{
+				Request: &btcjson.TemplateRequest{
+					Mode:         "template",
+					Capabilities: []string{"longpoll", "coinbasetxn"},
+					SigOpLimit:   true,
+					SizeLimit:    int64(100000000),
+					MaxVersion:   2,
 				},
 			},
-		*/
+		},
 		{
 			name: "getchaintips",
 			newCmd: func() (interface{}, error) {
@@ -1126,7 +1124,7 @@ func TestChainSvrCmds(t *testing.T) {
 }
 
 // TestChainSvrCmdErrors ensures any errors that occur in the command during
-// custom marshal and unmarshal are as expected.
+// custom mashal and unmarshal are as expected.
 func TestChainSvrCmdErrors(t *testing.T) {
 	t.Parallel()
 
