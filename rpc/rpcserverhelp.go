@@ -1,8 +1,3 @@
-// Copyright (c) 2015-2017 The btcsuite developers
-// Copyright (c) 2015-2017 The Decred developers
-// Use of this source code is governed by an ISC
-// license that can be found in the LICENSE file.
-
 package rpc
 
 import (
@@ -564,89 +559,6 @@ var helpDescsEnUS = map[string]string{
 	"verifymessage-signature": "The base-64 encoded signature provided by the signer",
 	"verifymessage-message":   "The signed message",
 	"verifymessage--result0":  "Whether or not the signature verified",
-
-	// -------- Websocket-specific help --------
-
-	// Session help.
-	"session--synopsis":       "Return details regarding a websocket client's current connection session.",
-	"sessionresult-sessionid": "The unique session ID for a client's websocket connection.",
-
-	// NotifyBlocksCmd help.
-	"notifyblocks--synopsis": "Request notifications for whenever a block is connected or disconnected from the main (best) chain.",
-
-	// StopNotifyBlocksCmd help.
-	"stopnotifyblocks--synopsis": "Cancel registered notifications for whenever a block is connected or disconnected from the main (best) chain.",
-
-	// NotifyNewTransactionsCmd help.
-	"notifynewtransactions--synopsis": "Send either a txaccepted or a txacceptedverbose notification when a new transaction is accepted into the mempool.",
-	"notifynewtransactions-verbose":   "Specifies which type of notification to receive. If verbose is true, then the caller receives txacceptedverbose, otherwise the caller receives txaccepted",
-
-	// StopNotifyNewTransactionsCmd help.
-	"stopnotifynewtransactions--synopsis": "Stop sending either a txaccepted or a txacceptedverbose notification when a new transaction is accepted into the mempool.",
-
-	// NotifyReceivedCmd help.
-	"notifyreceived--synopsis": "Send a recvtx notification when a transaction added to mempool or appears in a newly-attached block contains a txout pkScript sending to any of the passed addresses.\n" +
-		"Matching outpoints are automatically registered for redeemingtx notifications.",
-	"notifyreceived-addresses": "List of address to receive notifications about",
-
-	// StopNotifyReceivedCmd help.
-	"stopnotifyreceived--synopsis": "Cancel registered receive notifications for each passed address.",
-	"stopnotifyreceived-addresses": "List of address to cancel receive notifications for",
-
-	// OutPoint help.
-	"outpoint-hash":  "The hex-encoded bytes of the outpoint hash",
-	"outpoint-index": "The index of the outpoint",
-
-	// NotifySpentCmd help.
-	"notifyspent--synopsis": "Send a redeemingtx notification when a transaction spending an outpoint appears in mempool (if relayed to this btcd instance) and when such a transaction first appears in a newly-attached block.",
-	"notifyspent-outpoints": "List of transaction outpoints to monitor.",
-
-	// StopNotifySpentCmd help.
-	"stopnotifyspent--synopsis": "Cancel registered spending notifications for each passed outpoint.",
-	"stopnotifyspent-outpoints": "List of transaction outpoints to stop monitoring.",
-
-	// LoadTxFilterCmd help.
-	"loadtxfilter--synopsis": "Load, add to, or reload a websocket client's transaction filter for mempool transactions, new blocks and rescanblocks.",
-	"loadtxfilter-reload":    "Load a new filter instead of adding data to an existing one",
-	"loadtxfilter-addresses": "Array of addresses to add to the transaction filter",
-	"loadtxfilter-outpoints": "Array of outpoints to add to the transaction filter",
-
-	// Rescan help.
-	"rescan--synopsis": "Rescan block chain for transactions to addresses.\n" +
-		"When the endblock parameter is omitted, the rescan continues through the best block in the main chain.\n" +
-		"Rescan results are sent as recvtx and redeemingtx notifications.\n" +
-		"This call returns once the rescan completes.",
-	"rescan-beginblock": "Hash of the first block to begin rescanning",
-	"rescan-addresses":  "List of addresses to include in the rescan",
-	"rescan-outpoints":  "List of transaction outpoints to include in the rescan",
-	"rescan-endblock":   "Hash of final block to rescan",
-
-	// RescanBlocks help.
-	"rescanblocks--synopsis":   "Rescan blocks for transactions matching the loaded transaction filter.",
-	"rescanblocks-blockhashes": "List of hashes to rescan.  Each next block must be a child of the previous.",
-	"rescanblocks--result0":    "List of matching blocks.",
-
-	// RescannedBlock help.
-	"rescannedblock-hash":         "Hash of the matching block.",
-	"rescannedblock-transactions": "List of matching transactions, serialized and hex-encoded.",
-
-	// Uptime help.
-	"uptime--synopsis": "Returns the total uptime of the server.",
-	"uptime--result0":  "The number of seconds that the server has been running",
-
-	// Version help.
-	"version--synopsis":       "Returns the JSON-RPC API version (semver)",
-	"version--result0--desc":  "Version objects keyed by the program or API name",
-	"version--result0--key":   "Program or API name",
-	"version--result0--value": "Object containing the semantic version",
-
-	// VersionResult help.
-	"versionresult-versionstring": "The JSON-RPC API version (semver)",
-	"versionresult-major":         "The major component of the JSON-RPC API version",
-	"versionresult-minor":         "The minor component of the JSON-RPC API version",
-	"versionresult-patch":         "The patch component of the JSON-RPC API version",
-	"versionresult-prerelease":    "Prerelease info about the current build",
-	"versionresult-buildmetadata": "Metadata about the current build",
 }
 
 // rpcResultTypes specifies the result types that each RPC command can return.

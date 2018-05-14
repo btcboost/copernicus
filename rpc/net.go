@@ -5,14 +5,14 @@ var netHandlers = map[string]commandHandler{
 	"ping":               handlePing,
 	"getpeerinfo":        handleGetPeerInfo,
 	"addnode":            handleAddNode,
-	"disconnectnode":     handleDisconnectnode,
+	"disconnectnode":     handleDisconnectNode,
 	"getaddednodeinfo":   handleGetAddedNodeInfo,
 	"getnettotals":       handleGetNetTotals,
-	"getnetworkinfo":     handleGetnetworkinfo,
-	"setban":             handleSetban,
-	"listbanned":         handleListbanned,
-	"clearbanned":        handleClearbanned,
-	"setnetworkactive":   handleSetnetworkactive,
+	"getnetworkinfo":     handleGetnetWorkinfo,
+	"setban":             handleSetBan,
+	"listbanned":         handleListBanned,
+	"clearbanned":        handleClearBanned,
+	"setnetworkactive":   handleSetnetWorkActive,
 }
 
 func handleGetConnectionCount(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
@@ -110,7 +110,7 @@ func handleAddNode(s *Server, cmd interface{}, closeChan <-chan struct{}) (inter
 	return nil, nil
 }
 
-func handleDisconnectnode(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleDisconnectNode(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
@@ -220,23 +220,23 @@ func handleGetNetTotals(s *Server, cmd interface{}, closeChan <-chan struct{}) (
 	return nil, nil
 }
 
-func handleGetnetworkinfo(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleGetnetWorkinfo(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
-func handleSetban(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleSetBan(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
-func handleListbanned(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleListBanned(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
-func handleClearbanned(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleClearBanned(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
-func handleSetnetworkactive(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleSetnetWorkActive(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 

@@ -24,11 +24,11 @@ var miningHandlers = map[string]commandHandler{
 	"getblocktemplate":      handleGetblocktemplate,
 	"submitblock":           handleSubmitBlock,
 	"generate":              handleGenerate,
-	"generatetoaddress":     handleGeneratetoaddress,
-	"estimatefee":           handleEstimatefee,
-	"estimatepriority":      handleEstimatepriority,
-	"estimatesmartfee":      handleEstimatesmartfee,
-	"estimatesmartpriority": handleEstimatesmartpriority,
+	"generatetoaddress":     handleGenerateToAddress,
+	"estimatefee":           handleEstimateFee,
+	"estimatepriority":      handleEstimatePriority,
+	"estimatesmartfee":      handleEstimateSmartFee,
+	"estimatesmartpriority": handleEstimateSmartPriority,
 }
 
 func handleGetNetWorkhashPS(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
@@ -662,23 +662,23 @@ func handleGenerate(s *Server, cmd interface{}, closeChan <-chan struct{}) (inte
 	return nil, nil
 }
 
-func handleGeneratetoaddress(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleGenerateToAddress(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
-func handleEstimatefee(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleEstimateFee(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
-func handleEstimatepriority(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleEstimatePriority(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
-func handleEstimatesmartfee(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleEstimateSmartFee(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
-func handleEstimatesmartpriority(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+func handleEstimateSmartPriority(s *Server, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
 	return nil, nil
 }
 
